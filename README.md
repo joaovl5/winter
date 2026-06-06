@@ -25,14 +25,14 @@ Winter
 
 ## Roadmap
 
-- [ ] Base functionality from [the specification](./spec.md):
-  - [Data Types](./spec.md#data-types)
-  - [Variable Bindings](./spec.md#variable-bindings)
-  - [Operators](./spec.md#operators)
-  - [Functions](./spec.md#functions)
-- [ ] [Type Annotations](./spec.md#type-annotations)
-- [ ] [Declared Types](./spec.md#declared-types)
-- [ ] [Macros](./spec.md#macros)
-- [ ] [Requirements/Namespaces System](./spec.md#requirements-and-namespaces-system)
-- [ ] [Documentation Comments](./spec.md#documentation-comments)
-- [ ] [Generic Types](./spec.md#generics)
+- [ ] Base functionality from [the specification](./docs/spec.md):
+  - [Data Types](./docs/spec.md#data-types)
+  - [Variable Bindings](./docs/spec.md#variable-bindings)
+  - [Operators](./docs/spec.md#operators)
+  - [Functions](./docs/spec.md#functions)
+- [ ] [Type Annotations](./docs/spec.md#type-annotations)
+- [ ] [Declared Types](./docs/spec.md#declared-types)
+- [ ] [Macros](./docs/spec.md#macros)
+- [ ] [Requirements/Namespaces System](./docs/spec.md#requirements-and-namespaces-system)
+- [ ] [Documentation Comments](./docs/spec.md#documentation-comments)
+- [ ] [Generic Types](./docs/spec.md#generics)

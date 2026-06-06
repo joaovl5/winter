@@ -1,8 +1,5 @@
 target/
-
-# Nix
+banks
 result*
 result-*
-
-# Misc
 .direnv
