@@ -9,7 +9,7 @@
 
 - `(+ a b ...)` sums two or more numbers
 - `(- a b)` subtracts `b` from `a`
-- `-a` inverts sign of number (parentheses not needed)
+- `(- a)` inverts sign of number
 - `(* a b ...)` multiplies two or more numbers
 - `(/ a b)` divides like `a / b`
 - `(> a b)` like `a > b`
@@ -19,10 +19,11 @@
 
 ### Boolean Operators
 
-- `(all a b ...)` like `a == b` - takes two or more arguments
-- `(any a b ...)` like `a || b` - takes two or more arguments
-- `(not= a b)` like `a != b`
+- `(= a b ...)` like `a == b` - takes two or more arguments
 - `(not a)` like `!a`
+- `(not= a b ...)` like `a != b` - takes two or more arguments
+- `(all a b ...)` like `a && b` - takes two or more arguments
+- `(any a b ...)` like `a || b` - takes two or more arguments
 - `(thus a b ...)` like `a -> b -> ...` - takes two or more arguments
   - This is Nix's logical implication operator, where `a -> b` means:
     if `A` is true, then `B` must also be true, if `A` is false just
@@ -349,13 +350,14 @@ Nix lambdas/functions follow the form below:
    use-element-y ? true}
     (do-stuff))
 
-; naming an unpacked map is done via angle-brackets like below:
+; as in Nix, naming an unpacked map is done via `@` syntax below:
+; but the `@` in Winter will **ONLY** work *before* the map, not after
 (fn make-pizza
   [eggs
    dough
-   <extra-ingredients {use-cheddar ? true
-                       use-cheetos ? false
-                       ...}>]
+   extra-ingredients@{use-cheddar ? true
+                      use-cheetos ? false
+                      ...}]
   (do-pizza))
 ```
 

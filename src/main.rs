@@ -1,9 +1,11 @@
 mod compiler;
 mod nix;
-
 mod parser;
+mod tokenizer;
+
 use nix::NixExpr;
 use parser::Parser;
+use tokenizer::Tokenizer;
 
 fn test_nix_compile() {
     let expr_1 = NixExpr::List(vec![

@@ -56,11 +56,13 @@ Operators syntax are their own IR.
 
 ## Functions
 
-- `(lambda x y)` - x is one arg, y is result
-- `(arg some-arg)`
-- `(ellipsis)` for `...` in map args
+- `(#lambda x y)` - x is one arg, y is result
+- `(#arg some-arg)`
+- `(#ellipsis)` for `...` in map args
 - Examples:
-  - `(fn [x y] (+ x y))` becomes `(lambda x (lambda y (+ x y)))`
+  - `(fn [x y] (+ x y))` becomes `(#lambda x (#lambda y (+ x y)))`
+- Potential other syntaxes for baking a function can arise from this:
+  - `#(x y z w)` - akin to `x: y: z: w`
 
 ## Doc Comments
 
