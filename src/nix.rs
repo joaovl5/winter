@@ -1,56 +1,57 @@
-type SomeNixExpr = Box<NixExpr>;
-type NixExprList = Vec<NixExpr>;
-type NixExprMap = Vec<(String, NixExpr)>;
+type OneNixVal<'x> = Box<NixVal<'x>>;
+type NixValList<'x> = Vec<NixVal<'x>>;
+type NixValMap<'x> = Vec<(String, NixVal<'x>)>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum NixExpr {
+pub enum NixVal<'src> {
     // TODO: numbers, operators
     Null,
-    Identifier(String),
-    String(String),
     Bool(bool),
+    Number(&'src str),
+    Identifier(&'src str),
+    String(String),
     Path(String),
-    List(NixExprList),
-    AttrSet(NixExprMap),
+    List(NixValList<'src>),
+    AttrSet(NixValMap<'src>),
     Lambda {
         arg: String,
-        body: SomeNixExpr,
+        body: OneNixVal<'src>,
     },
     Let {
-        entries: NixExprMap,
-        body: SomeNixExpr,
+        entries: NixValMap<'src>,
+        body: OneNixVal<'src>,
     },
     Apply {
-        function: SomeNixExpr,
-        args: NixExprList,
+        function: OneNixVal<'src>,
+        args: NixValList<'src>,
     },
     Select {
-        base: SomeNixExpr,
+        base: OneNixVal<'src>,
         path: Vec<String>,
     },
 }
 
-impl NixExpr {
+impl<'src> NixVal<'src> {
     pub fn render(&self) -> String {
         match self {
-            NixExpr::Identifier(x) => x.clone(),
-            NixExpr::Path(x) => x.clone(),
-            NixExpr::Bool(x) => x.to_string(),
-            NixExpr::Null => "null".to_string(),
-            NixExpr::String(x) => render_nix_string(x),
-            NixExpr::List(x) => render_list(x),
-            NixExpr::AttrSet(x) => render_attrset(x),
-            NixExpr::Lambda { arg, body } => format!("{arg}: {}", body.render()),
-            NixExpr::Let { entries, body } => render_let(entries, body),
-            NixExpr::Apply { function, args } => render_apply(function, args),
-            NixExpr::Select { base, path } => render_select(base, path),
+            NixVal::Identifier(x) => x.to_string(),
+            NixVal::Path(x) => x.clone(),
+            NixVal::Bool(x) => x.to_string(),
+            NixVal::Null => "null".to_string(),
+            NixVal::String(x) => render_nix_string(x),
+            NixVal::List(x) => render_list(x),
+            NixVal::AttrSet(x) => render_attrset(x),
+            NixVal::Lambda { arg, body } => format!("{arg}: {}", body.render()),
+            NixVal::Let { entries, body } => render_let(entries, body),
+            NixVal::Apply { function, args } => render_apply(function, args),
+            NixVal::Select { base, path } => render_select(base, path),
         }
     }
 
     fn render_as_arg(&self) -> String {
         let rendered = self.render();
         match self {
-            NixExpr::Lambda { .. } | NixExpr::Let { .. } | NixExpr::Apply { .. } => {
+            NixVal::Lambda { .. } | NixVal::Let { .. } | NixVal::Apply { .. } => {
                 format!("({rendered})")
             }
             _ => rendered,
@@ -58,7 +59,7 @@ impl NixExpr {
     }
 }
 
-fn render_list(lst: &[NixExpr]) -> String {
+fn render_list(lst: &[NixVal]) -> String {
     if lst.is_empty() {
         return "[]".to_string();
     }
@@ -72,7 +73,7 @@ fn render_list(lst: &[NixExpr]) -> String {
     format!("[ {lst} ]")
 }
 
-fn render_attrset(entries: &NixExprMap) -> String {
+fn render_attrset(entries: &NixValMap) -> String {
     if entries.is_empty() {
         return "{}".to_string();
     }
@@ -87,7 +88,7 @@ fn render_attrset(entries: &NixExprMap) -> String {
     out
 }
 
-fn render_let(entries: &NixExprMap, body: &NixExpr) -> String {
+fn render_let(entries: &NixValMap, body: &NixVal) -> String {
     let mut out = String::from("let ");
 
     for (k, v) in entries {
@@ -100,14 +101,14 @@ fn render_let(entries: &NixExprMap, body: &NixExpr) -> String {
     out
 }
 
-fn render_apply(function: &NixExpr, args: &NixExprList) -> String {
+fn render_apply(function: &NixVal, args: &NixValList) -> String {
     let mut out = Vec::with_capacity(args.len() + 1);
     out.push(format!("({})", function.render()));
     out.extend(args.iter().map(|x| x.render_as_arg()));
     out.join(" ")
 }
 
-fn render_select(base: &NixExpr, path: &[String]) -> String {
+fn render_select(base: &NixVal, path: &[String]) -> String {
     let mut out = format!("({})", base.render());
     for k in path {
         out.push('.');
