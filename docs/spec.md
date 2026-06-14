@@ -42,7 +42,7 @@
 
 - `(. a b)` or, if not dynamic, simply `a.b` is fine
 - `(or (. a b) (. c d))` equivalent to Nix's `a.b or c.d`
-- `(? a b)` like `a ? b` (where `a` is a map/attrset and `b` is an
+- `(has a b)` like `a ? b` (where `a` is a map/attrset and `b` is an
   attrpath)
 
 ### String/Path Operators
@@ -361,12 +361,19 @@ Nix lambdas/functions follow the form below:
   (do-pizza))
 ```
 
-May also include type annotations (more on those at [SECTION]):
+May also include type annotations (more on those at
+[Typing - Type Annotations](#type-annotations)):
 
 ```clojure
 (fn sum-values@num [x@num y@num]
   (+ x y))
 ```
+
+Unpacked arguments that are named, however, can't be typed - given
+making an anonymous attrset-like object is already type-like. Thus,
+you either type the arguments in the unpacked map, or type the
+argument itself and avoid unpacking it altogether (given it'd be
+redundant).
 
 ## Comments
 

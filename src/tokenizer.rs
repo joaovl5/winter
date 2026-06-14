@@ -1,5 +1,7 @@
 use std::{iter::Peekable, str::Chars};
 
+use crate::utils::ResOpt;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TokenVal<'tk> {
     OpenParen,    // (
@@ -109,11 +111,11 @@ impl<'tk> Tokenizer<'tk> {
             },
         };
 
-        return Ok(Some(Token {
+        Ok(Some(Token {
             value: tk_val,
             pos_start,
             pos_end: self.pos,
-        }));
+        }))
     }
 
     fn single_char_token(ch: char) -> Option<TokenVal<'tk>> {
@@ -306,10 +308,10 @@ impl<'tk> Tokenizer<'tk> {
     }
 
     fn error(&self, msg: &str) -> TokenizerError {
-        return TokenizerError {
-            msg: format!("{msg}"),
+        TokenizerError {
+            msg: msg.to_string(),
             pos: self.pos,
-        };
+        }
     }
 
     fn skip_ignored(&mut self) {
@@ -325,7 +327,7 @@ impl<'tk> Tokenizer<'tk> {
     }
 
     fn peek(&mut self) -> Option<char> {
-        return self.iter.peek().copied();
+        self.iter.peek().copied()
     }
 
     fn next(&mut self) -> Option<char> {
@@ -343,8 +345,8 @@ impl<'tk> Tokenizer<'tk> {
     fn attempt<T>(
         &mut self,
         // function acting upon a forked `Tokenizer`
-        f: impl FnOnce(&mut Self) -> Result<Option<T>, TokenizerError>,
-    ) -> Result<Option<T>, TokenizerError> {
+        f: impl FnOnce(&mut Self) -> ResOpt<T, TokenizerError>,
+    ) -> ResOpt<T, TokenizerError> {
         let mut fork = self.clone();
 
         if let Some(value) = f(&mut fork)? {
