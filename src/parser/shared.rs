@@ -8,12 +8,11 @@ impl<'tks, 'src> Parser<'tks, 'src> {
     ) -> ParserRes<(ManyNodes<'src>, usize)> {
         // assumes `peek()` is in pos to get first item of path
         let mut items: ManyNodes<'src> = Vec::new();
-        let mut pos_end: usize = self.tokens[self.pos].pos_end;
+        let mut pos_end: usize;
         loop {
             let next_tk = match self.next() {
                 Some(tk) => tk,
-                None if !allow_eof => return Err(self.error("Unterminated dotted path")),
-                _ => break,
+                None => return Err(self.error("Unterminated dotted path")),
             };
             pos_end = next_tk.pos_end;
             let ast_val = match &next_tk.value {
@@ -31,9 +30,8 @@ impl<'tks, 'src> Parser<'tks, 'src> {
             // expected to be a dot
             let dot_tk = match self.peek() {
                 Some(tk) => &tk.value,
-                None => {
-                    return Err(self.error("Unterminated dotted path"));
-                }
+                None if allow_eof => break,
+                None => return Err(self.error("Unterminated dotted path")),
             };
             if !matches!(dot_tk, TokenVal::Dot) {
                 break;

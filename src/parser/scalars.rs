@@ -6,11 +6,15 @@ impl<'tks, 'src> Parser<'tks, 'src> {
         let Some(tk) = self.peek() else {
             return Ok(None);
         };
+        let pos_start = tk.pos_start;
+        let mut pos_end = tk.pos_end;
         let mut call_next = true;
         let value = match &tk.value {
             TokenVal::Atom(at) => {
                 call_next = false;
-                self.parse_atom(at)?
+                let (value, atom_pos_end) = self.parse_atom(at)?;
+                pos_end = atom_pos_end;
+                value
             }
             TokenVal::Number(num) => AstVal::Number(num),
             TokenVal::StringLike { parts, is_path } => {
@@ -23,24 +27,26 @@ impl<'tks, 'src> Parser<'tks, 'src> {
         }
 
         let ast = Ast {
-            pos_start: tk.pos_start,
-            pos_end: tk.pos_end,
+            pos_start,
+            pos_end,
             value,
         };
         Ok(Some(ast))
     }
 
-    fn parse_atom(&mut self, at: &'src str) -> ParserRes<AstVal<'src>> {
+    fn parse_atom(&mut self, at: &'src str) -> ParserRes<(AstVal<'src>, usize)> {
+        let pos_end = self.tokens[self.pos].pos_end;
         let mut call_next = true;
+        let mut out_pos_end = pos_end;
         let out = match at {
             "nil" => AstVal::Nil,
             "true" => AstVal::Bool(true),
             "false" => AstVal::Bool(false),
             _ => {
                 // allow for nested attribute selection
-                let (mut sel_nodes, _) = self.parse_dotted_path(false)?;
-                call_next = false; // necessary due to `parse_dotted_path` calling next()
-                                   // which we already do here, after the `match` clause
+                let (mut sel_nodes, sel_pos_end) = self.parse_dotted_path(true)?;
+                call_next = false; // parse_dotted_path already advances
+                out_pos_end = sel_pos_end;
                 match sel_nodes.len() {
                     0 => return Err(self.error("Atom was empty")),
                     1 => sel_nodes.pop().unwrap(),
@@ -51,6 +57,6 @@ impl<'tks, 'src> Parser<'tks, 'src> {
         if call_next {
             self.next();
         }
-        Ok(out)
+        Ok((out, out_pos_end))
     }
 }
