@@ -269,7 +269,34 @@ Thus, inherit will differ in behavior depending on its placement:
 
 - when inside a `map` - will resolve to an `inherit` inside that
   map/attrset
-- when inside a `list` - will resolve to `with` blocks
+- when inside a `list` - will replace the need for `with` blocks but *won't*
+  use them when compiling into Nix - it will, instead, perform namespace
+  prefixing like so:
+
+  ```clojure
+  [my_custom_pkg
+   my_other_custom_pkg
+   (inherit pkgs (coreutils findutils btop))]
+  ```
+
+  Compiles to:
+
+  ```nix
+  [
+    my_custom_pkg
+    my_other_custom_pkg
+    pkgs.coreutils
+    pkgs.findutils
+    pkgs.btop
+  ]
+  ```
+
+  It should be noted that ordering of items that use inherit will not be
+  preserved at this point - it is not a priority to refactor for
+  fixing this, thus if you have a use-case that would warrant
+  order-aware inherits in lists, let me know by opening an issue so
+  I become aware of this need.
+
 - if used in a `let` - will resolve to an `inherit` inside that `let`
   block
 - if used elsewhere - will resolve to a `locals` block with that

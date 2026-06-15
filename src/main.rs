@@ -1,6 +1,7 @@
 mod compiler;
 mod nix;
 mod parser;
+mod semantics;
 mod tokenizer;
 mod utils;
 

@@ -39,7 +39,7 @@ impl<'tks, 'src> Parser<'tks, 'src> {
         }
     }
 
-    pub fn parse(mut self) -> Result<Vec<Ast<'src>>, ParserError> {
+    pub fn parse(&mut self) -> Result<Vec<Ast<'src>>, ParserError> {
         let mut out: Vec<Ast<'src>> = Vec::new();
         loop {
             let tk = self.parse_one()?;
