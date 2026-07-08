@@ -53,13 +53,10 @@ impl<'tks, 'src> Parser<'tks, 'src> {
                 StringLikeTokenPart::Expr(part_tks) => {
                     // This won't give exact end positions, but that is fine for now!!
                     let err_empty = self.error("String interpolation must not be empty");
-                    let err_many =
-                        self.error("String interpolation must contain exactly one expression");
-                    let mut part_ast = Parser::new(part_tks).parse()?;
-                    match part_ast.len() {
-                        1 => StringLikeASTPart::Expr(Box::new(part_ast.pop().unwrap().value)),
-                        0 => return Err(err_empty),
-                        _ => return Err(err_many),
+                    let part_ast = Parser::new(part_tks).parse_one()?;
+                    match part_ast {
+                        Some(x) => StringLikeASTPart::Expr(x.value),
+                        None => return Err(err_empty),
                     }
                 }
             };

@@ -4,6 +4,7 @@ use std::slice::Iter;
 use crate::tokenizer::{Token, TokenVal};
 use crate::utils::ResOpt;
 
+mod ast;
 mod binds;
 mod function;
 mod list;
@@ -12,9 +13,9 @@ mod paren;
 mod refs;
 mod scalars;
 mod shared;
-mod types;
+mod walker;
 
-pub use types::*;
+pub use ast::*;
 
 #[derive(Debug, Clone)]
 pub struct Parser<'tks, 'src> {
@@ -39,17 +40,17 @@ impl<'tks, 'src> Parser<'tks, 'src> {
         }
     }
 
-    pub fn parse(&mut self) -> Result<Vec<Ast<'src>>, ParserError> {
-        let mut out: Vec<Ast<'src>> = Vec::new();
+    pub fn parse(&mut self) -> Result<Module<'src>, ParserError> {
+        let mut nodes: Vec<Ast<'src>> = Vec::new();
         loop {
             let tk = self.parse_one()?;
             match tk {
-                Some(tk) => out.push(tk),
+                Some(tk) => nodes.push(tk),
                 None => break,
             }
         }
 
-        Ok(out)
+        Ok(Module { nodes })
     }
 
     fn parse_one(&mut self) -> ParserResOpt<Ast<'src>> {
@@ -93,7 +94,6 @@ impl<'tks, 'src> Parser<'tks, 'src> {
             TokenVal::OpenParen => self.parse_paren(),
             TokenVal::OpenBracket => self.parse_list(),
             TokenVal::OpenBrace => self.parse_map(),
-            // TokenVal::OpenParen => self.attempt(|fork| fork.parse_paren()),
             _ => self.parse_scalar(),
         }
     }
