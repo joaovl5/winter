@@ -4,16 +4,16 @@ use std::slice::Iter;
 use crate::tokenizer::{Token, TokenVal};
 use crate::utils::ResOpt;
 
-mod ast;
-mod binds;
-mod function;
-mod list;
-mod map;
-mod paren;
-mod refs;
-mod scalars;
-mod shared;
-mod walker;
+pub mod ast;
+pub mod binds;
+pub mod function;
+pub mod list;
+pub mod map;
+pub mod paren;
+pub mod refs;
+pub mod scalars;
+pub mod shared;
+pub mod walker;
 
 pub use ast::*;
 

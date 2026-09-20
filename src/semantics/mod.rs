@@ -1,65 +1,49 @@
 use std::collections::HashMap;
 
-use itertools::Itertools;
+// use itertools::Itertools;
 
-use crate::parser::{Ast, AstVal, CallableHeadNodeType, FuncParam, StringLikeASTPart};
+use crate::parser::{walker::WalkArgs, AstVal, Module};
 
 #[derive(Debug, Clone)]
 /// Handles checking scope-related semantics such as:
 /// - lowering `locals` into `let`
 /// - lowering lone `inherits` into `let`
 /// - merging same-scope `let` nodes
-pub struct ScopeChecker<'src> {
-    pub nodes: Vec<Ast<'src>>,
+pub struct ScopeChecker<'x> {
+    pub module: Box<Module<'x>>,
 }
 
 #[derive(Debug, Clone)]
-pub struct Scope<'src> {
-    pub binds: HashMap<&'src str, AstVal<'src>>,
+pub struct Scope<'x> {
+    pub binds: HashMap<&'x str, AstVal<'x>>,
 }
 
 #[derive(Debug, Clone)]
-pub struct ScopeBind<'src> {
-    pub value: AstVal<'src>,
+pub struct ScopeBind<'x> {
+    pub value: AstVal<'x>,
     pub references: usize,
 }
 
 pub(super) type SemanRes<T> = Result<T, SemanticsError>;
 
 impl<'src> ScopeChecker<'src> {
-    pub fn new(nodes: Vec<Ast<'src>>) -> Self {
-        Self { nodes }
-    }
-
+    /// Handle (locals) nodes and have them be transformed into (let) nodes
     pub fn handle_locals(&mut self) -> SemanRes<()> {
-        let iter = self.nodes.iter_mut();
+        let iter = self.module.nodes.iter_mut();
         for ast in iter {
-            ast.value.walk(|x| match x {
-                AstVal::Locals(locals) => {
-                    // Find locals body!
-                    todo!()
-                }
-                _ => (),
+            ast.value.walk_deep(&mut |args: &mut WalkArgs| {
+                let node = match args {
+                    WalkArgs::Ctx { idx, nodes } => &mut nodes[*idx],
+                    WalkArgs::Val(val) => val,
+                };
+                // todo later
+                // match node {
+                //     AstVal::Locals(locals)
+                // }
             });
         }
 
         Ok(())
-    }
-
-    fn error(&self, msg: &str, pos: usize) -> SemanticsError {
-        let msg = msg.to_string();
-        let Some(ast) = &self.nodes.get(pos).or(self.nodes.last()) else {
-            return SemanticsError {
-                msg,
-                pos_start: 0,
-                pos_end: 0,
-            };
-        };
-        return SemanticsError {
-            msg,
-            pos_start: ast.pos_start,
-            pos_end: ast.pos_end,
-        };
     }
 }
 
