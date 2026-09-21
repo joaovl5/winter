@@ -32,15 +32,24 @@ class Voyager[T: Span, E: Exception](ABC):
     def __attrs_post_init__(self) -> None:
         self.source_iter = seekable(self.source)
 
-    @abstractmethod
     def parse(
         self,
     ) -> Generator[
         # continuosly yields Ts and Es
-        tuple[list[T], list[E]],
+        # sends a 'None' value only at the end
+        tuple[T | None, list[E]],
         # must keep sending "True" otherwise stops
+        # will stop regardless upon final 'None'
         bool,
-    ]: ...
+    ]:
+        while True:
+            obj, errors = self._parse_one()
+            should_continue = yield obj, errors
+            if obj is None or not should_continue:
+                break
+
+    @abstractmethod
+    def _parse_one(self) -> tuple[T | None, list[E]]: ...
 
     # in case the raw source "pos" is not the original pos, this function may be
     # overriden
