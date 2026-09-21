@@ -1,0 +1,23 @@
+[project]
+  name = "winter"
+  version = "0.1.0"
+  description = "Winter POC"
+  readme = "README.md"
+  authors = [
+    { name = "Joao Pedro", email = "vieiraleao2005@gmail.com" },
+  ]
+  requires-python = ">=3.14"
+  dependencies = [
+    "attrs>=26.1.0",
+    "cyclopts>=4.25.3",
+    "loguru>=0.7.3",
+    "more-itertools>=11.1.0",
+    "rich>=15.0.0",
+]
+
+  [project.scripts]
+    winter = "winter:main"
+
+[build-system]
+  requires      = ["uv_build>=0.12.3,<0.13.0"]
+  build-backend = "uv_build"

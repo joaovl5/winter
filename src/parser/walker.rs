@@ -7,11 +7,11 @@ pub enum WalkArgs<'src, 'walk> {
     // i dont like this brand of separation between astval and ast, must refactor later
     Module {
         idx: usize,
-        nodes: &'walk mut [Ast<'src>],
+        nodes: &'walk mut Vec<Ast<'src>>,
     },
     Ctx {
         idx: usize,
-        nodes: &'walk mut [AstVal<'src>],
+        nodes: &'walk mut Vec<AstVal<'src>>,
         // we're currently cloning this, we can optimize later
         parent: &'walk AstVal<'src>,
     },
@@ -21,13 +21,13 @@ pub enum WalkArgs<'src, 'walk> {
 type WalkDeepCb<'ast, 'cb> = dyn for<'call, 'walk> FnMut(&'call mut WalkArgs<'ast, 'walk>) + 'cb;
 
 fn walk_deep_many<'ast>(
-    many: &mut [AstVal<'ast>],
+    many: &mut Vec<AstVal<'ast>>,
     callback: &mut WalkDeepCb<'ast, '_>,
     parent: &AstVal<'ast>,
 ) {
     let mut idx = 0;
     while idx < many.len() {
-        walk_deep(
+        let removed = walk_deep(
             &mut WalkArgs::Ctx {
                 idx,
                 nodes: many,
@@ -35,7 +35,9 @@ fn walk_deep_many<'ast>(
             },
             callback,
         );
-        idx += 1;
+        if !removed {
+            idx += 1;
+        }
     }
 }
 
@@ -53,8 +55,23 @@ fn walk_deep_bounds<'ast, 'walk>(
 fn walk_deep<'src, 'walk>(
     args: &'walk mut WalkArgs<'src, 'walk>,
     callback: &mut WalkDeepCb<'src, '_>,
-) {
+) -> bool {
+    let len = match args {
+        WalkArgs::Module { nodes, .. } => nodes.len(),
+        WalkArgs::Ctx { nodes, .. } => nodes.len(),
+        WalkArgs::Val(_) => 0,
+    };
     callback(args);
+    // A callback can remove the current declaration and later declarations.
+    // Visit the shifted node at this index on the next iteration.
+    let removed = match args {
+        WalkArgs::Module { nodes, .. } => nodes.len() < len,
+        WalkArgs::Ctx { nodes, .. } => nodes.len() < len,
+        WalkArgs::Val(_) => false,
+    };
+    if removed {
+        return true;
+    }
     let node = match args {
         WalkArgs::Module { idx, nodes } => &mut nodes[*idx].value,
         WalkArgs::Ctx { idx, nodes, .. } => &mut nodes[*idx],
@@ -65,7 +82,7 @@ fn walk_deep<'src, 'walk>(
 
     use AstVal::*;
     match node {
-        List(nodes) => walk_deep_many(nodes.as_mut_slice(), callback, &node_clone),
+        List(nodes) => walk_deep_many(nodes, callback, &node_clone),
         StringLike { parts, .. } => {
             let mut idx = 0;
             while idx < parts.len() {
@@ -89,7 +106,7 @@ fn walk_deep<'src, 'walk>(
         }
         Callable(head, body) => {
             if let CallableHeadNodeType::Expr(expr) = head {
-                walk_deep(&mut WalkArgs::Val(expr), callback)
+                walk_deep(&mut WalkArgs::Val(expr), callback);
             }
             walk_deep_many(body, callback, &node_clone);
         }
@@ -99,10 +116,21 @@ fn walk_deep<'src, 'walk>(
             walk_deep(&mut WalkArgs::Val(body), callback);
         }
         Locals(locals) => walk_deep_bounds(locals.binds.as_mut_slice(), callback),
-        Function { body, .. } => walk_deep_many(body, callback, &node_clone),
-        _ => todo!(),
+        Function { params, body, .. } => {
+            for param in params {
+                if let crate::parser::FuncParam::Unwrapped { params, .. } = param {
+                    for (_, default) in params {
+                        if let Some(default) = default {
+                            walk_deep(&mut WalkArgs::Val(default), callback);
+                        }
+                    }
+                }
+            }
+            walk_deep_many(body, callback, &node_clone);
+        }
+        _ => (),
     }
-    todo!()
+    false
 }
 
 impl<'ast> AstVal<'ast> {
@@ -113,14 +141,18 @@ impl<'ast> AstVal<'ast> {
 
 impl<'ast> Module<'ast> {
     pub fn walk_deep(&mut self, callback: &mut WalkDeepCb<'ast, '_>) {
-        for idx in 0..self.nodes.len() {
-            walk_deep(
+        let mut idx = 0;
+        while idx < self.nodes.len() {
+            let removed = walk_deep(
                 &mut WalkArgs::Module {
                     idx,
-                    nodes: self.nodes.as_mut_slice(),
+                    nodes: &mut self.nodes,
                 },
                 callback,
             );
+            if !removed {
+                idx += 1;
+            }
         }
     }
 }

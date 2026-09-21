@@ -29,64 +29,77 @@ pub(super) type SemanResMany<'x, T> = Result<T, Vec<SemanticsError>>;
 
 impl<'ast> ScopeChecker<'ast> {
     /// Handle (locals) nodes and have them be transformed into (let) nodes
-    pub fn handle_locals(&mut self) -> SemanResMany<()> {
-        let iter = self.module.nodes.iter_mut();
+    pub fn handle_locals(&mut self) -> SemanResMany<'_, ()> {
         let mut errors: Vec<SemanticsError> = Vec::new();
-        for ast in iter {
-            ast.value.walk_deep(&mut |args: &mut WalkArgs| {
-                let node = match args {
-                    // modules are always ok
-                    WalkArgs::Module { idx, nodes } => &mut nodes[*idx].value,
-                    WalkArgs::Ctx { idx, nodes, .. } => &mut nodes[*idx],
-                    // we reject 'val' because locals are never valid in there
-                    WalkArgs::Val(x) => x,
-                };
-                let AstVal::Locals(locals) = node else { return };
-                // check for invalid use-cases of locals:
-                let error_msg = match args {
-                    // modules are always ok
-                    WalkArgs::Module { .. } => None,
-                    WalkArgs::Ctx { parent, nodes, .. } => {
-                        if nodes.len() == 1 {
-                            Some("cannot be used on its own!")
-                        } else {
-                            match parent {
-                                AstVal::Selection(_) => Some("cannot be used in a path selection!"),
-                                AstVal::Map(_) => Some("cannot be used for map keys/values!"),
-                                _ => None,
-                            }
-                        }
-                    }
-                    WalkArgs::Val(_) => Some("cannot be used on its own!"),
-                };
-                if let Some(error_msg_val) = error_msg {
-                    errors.push(SemanticsError {
-                        msg: format!("`locals` {}\n context: {:#?}", error_msg_val, args),
-                    });
-                    return;
-                }
-                // we'll now deal with the "effective nodes" of the locals bindings
-                // we care solely on the nodes that come *after* the locals
-                match args {
-                    WalkArgs::Module { idx, nodes } => {}
-                    WalkArgs::Ctx { idx, nodes, parent } => {
-                        let nodes_len = nodes.len();
-                        let effective_nodes = nodes[idx..&mut nodes_len];
-                    }
-                    WalkArgs::Val(_) => (),
-                };
-
-                // todo later
-                // match node {
-                //     AstVal::Locals(locals)
-                // }
-            });
-        }
-
+        self.module.walk_deep(&mut |args: &mut WalkArgs| {
+            let node = match args {
+                WalkArgs::Module { idx, nodes } => &nodes[*idx].value,
+                WalkArgs::Ctx { idx, nodes, .. } => &nodes[*idx],
+                WalkArgs::Val(node) => node,
+            };
+            if !matches!(node, AstVal::Locals(_)) {
+                return;
+            }
+            let error_msg = match args {
+                WalkArgs::Module { idx, nodes } => (nodes[*idx + 1..]
+                    .iter()
+                    .all(|ast| matches!(ast.value, AstVal::Locals(_))))
+                .then_some("must be followed by an expression!"),
+                WalkArgs::Ctx { idx, nodes, parent } => match parent {
+                    AstVal::Selection(_) => Some("cannot be used in a path selection!"),
+                    AstVal::Map(_) => Some("cannot be used for map keys/values!"),
+                    _ => (nodes[*idx + 1..]
+                        .iter()
+                        .all(|node| matches!(node, AstVal::Locals(_))))
+                    .then_some("must be followed by an expression!"),
+                },
+                WalkArgs::Val(_) => Some("cannot be used on its own!"),
+            };
+            if let Some(error_msg) = error_msg {
+                errors.push(SemanticsError {
+                    msg: format!("`locals` {}\n context: {:#?}", error_msg, args),
+                });
+            }
+        });
         if !errors.is_empty() {
             return Err(errors);
         }
 
+        fn lower<'src, T>(nodes: &mut Vec<T>, value: impl Fn(&mut T) -> &mut AstVal<'src>) {
+            // Lower later declarations first, so earlier bindings enclose them.
+            for idx in (0..nodes.len()).rev() {
+                if !matches!(value(&mut nodes[idx]), AstVal::Locals(_)) {
+                    continue;
+                }
+                let mut declaration = nodes.remove(idx);
+                let AstVal::Locals(locals) =
+                    std::mem::replace(value(&mut declaration), AstVal::Nil)
+                else {
+                    unreachable!();
+                };
+                // Consumer-based placement belongs to a separate pass.
+                for sibling in &mut nodes[idx..] {
+                    let node = value(sibling);
+                    let body = Box::new(std::mem::replace(node, AstVal::Nil));
+                    *node = AstVal::Let {
+                        locals: locals.clone(),
+                        body,
+                    };
+                }
+            }
+        }
+
+        self.module.walk_deep(&mut |args| match args {
+            WalkArgs::Module { idx: 0, nodes } => lower(nodes, |ast| &mut ast.value),
+            WalkArgs::Ctx {
+                idx: 0,
+                nodes,
+                parent,
+            } if !matches!(parent, AstVal::Selection(_) | AstVal::Map(_)) => {
+                lower(nodes, |node| node);
+            }
+            _ => (),
+        });
         Ok(())
     }
 }
