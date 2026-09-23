@@ -15,7 +15,7 @@ RICH_HL = ReprHighlighter()
 THIS_DIR = Path(__file__).parent
 FILE = THIS_DIR / "draft.win"
 FILE_CONTENTS = FILE.read_text()
-LEXED_FORM_TKS, LEXED_ERRORS = Lexer(FILE_CONTENTS).parse()
+LEXED_FORM_TKS, LEXED_ERRORS = Lexer(iter(FILE_CONTENTS)).parse_total()
 
 
 p(Rule("# FILE CONTENTS", align="left"))

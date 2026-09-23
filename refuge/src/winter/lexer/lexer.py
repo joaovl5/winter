@@ -1,17 +1,15 @@
 from collections.abc import Generator
+from typing import override
 
 from attrs import define, field
+from more_itertools import loops
 
-from winter.utils.error_box import ErrorBox
+from winter.utils.voyager import Voyager
 
 from .lexemes import SINGLE_CHAR_LEXEMES, Lexeme, StringLikeLex
 
 
 class LexerError(RuntimeError): ...
-
-
-type LexerRes[T] = tuple[T, list[LexerError]]
-LexerErrorBox = ErrorBox[LexerError]
 
 
 BACKSLASH_VALUES = {
@@ -24,24 +22,12 @@ BACKSLASH_VALUES = {
 
 
 @define
-class Lexer:
-    source: str
-    pos: int = 0
-    pos_stack: list[int] = field(factory=list)
+class Lexer(Voyager[str, Lexeme.Type, LexerError]):
+    error_t: type[LexerError] = field(default=LexerError, init=False)
+    type _Res[X] = Lexer.Result[X]
 
-    def parse(self) -> LexerRes[list[Lexeme.Type]]:
-        out: list[Lexeme.Type] = []
-        all_errors: list[LexerError] = []
-        while True:
-            lexeme, errors = self._parse_one()
-            all_errors.extend(errors)
-            if lexeme is None:
-                break
-            out.append(lexeme)
-
-        return out, all_errors
-
-    def _parse_one(self) -> LexerRes[Lexeme.Type | None]:
+    @override
+    def _parse_one(self) -> _Res[Lexeme.Type | None]:
         self._skip_ignored()
         all_errors: list[LexerError] = []
         pos_start = self.pos
@@ -49,7 +35,7 @@ class Lexer:
         if (ch := self._peek()) is None:
             return None, all_errors
         if self._starts_with("..."):
-            for _ in range(3):
+            for _ in loops(3):
                 _ = self._next()
             return Lexeme.ELLIPSIS(
                 pos_start=pos_start,
@@ -58,13 +44,13 @@ class Lexer:
         if (tk := self._parse_single_char(ch)) is not None:
             _ = self._next()
             return tk, all_errors
-        for tk, errors in self._parse_one_generator():
+        for tk, errors in self._parse_one_options():
             all_errors.extend(errors)
             if tk:
                 return tk, all_errors
         return None, all_errors
 
-    def _parse_one_generator(self) -> Generator[LexerRes[Lexeme.Type | None]]:
+    def _parse_one_options(self) -> Generator[_Res[Lexeme.Type | None]]:
         funcs = (
             self._parse_string_like,
             self._parse_number,
@@ -73,7 +59,7 @@ class Lexer:
         for func in funcs:
             yield func()
 
-    def _parse_atom(self) -> LexerRes[Lexeme.ATOM | None]:
+    def _parse_atom(self) -> _Res[Lexeme.ATOM | None]:
         pos_start = self.pos
         while (ch := self._peek()) is not None:
             if not self._is_atom_char(ch):
@@ -82,14 +68,15 @@ class Lexer:
         pos_end = self.pos
         if pos_start == pos_end:
             return None, [self._error("Expected atom", error_t=LexerError)]
+        atom_range = "".join(self._get_range(pos_start, pos_end))
         return self._bake_t(
             Lexeme.ATOM,
             pos_start=pos_start,
             pos_end=pos_end,
-            value=self.source[pos_start:pos_end],
+            value=atom_range,
         ), []
 
-    def _parse_number(self) -> LexerRes[Lexeme.NUMBER | None]:
+    def _parse_number(self) -> _Res[Lexeme.NUMBER | None]:
         self._pos_checkpoint()
         pos_start = self.pos
         out: Lexeme.NUMBER | None = None
@@ -104,7 +91,7 @@ class Lexer:
         digit_start = self.pos
         self._traverse_digits()
         if digit_start == self.pos:
-            for _ in range(rollbacks_needed):
+            for _ in loops(rollbacks_needed):
                 self._pos_rollback()
             return out, all_errors
         if (ch := self._peek()) == ".":
@@ -119,14 +106,15 @@ class Lexer:
                 rollbacks_needed -= 1
         if (ch := self._peek()) is not None and self._is_atom_char(ch):
             all_errors.push("Invalid number literal")
-            for _ in range(rollbacks_needed):
+            for _ in loops(rollbacks_needed):
                 self._pos_rollback()
         if not invalid:
+            num_range = "".join(self._get_range(pos_start, self.pos))
             out = self._bake_t(
                 Lexeme.NUMBER,
                 pos_start=pos_start,
                 pos_end=self.pos,
-                value=self.source[pos_start : self.pos],
+                value=num_range,
             )
 
         return out, all_errors
@@ -149,7 +137,7 @@ class Lexer:
             return self._bake_t(out_t)
         return None
 
-    def _parse_string_like(self) -> LexerRes[Lexeme.STRING_LIKE | None]:
+    def _parse_string_like(self) -> _Res[Lexeme.STRING_LIKE | None]:
         self._pos_checkpoint()
         pos_start = self.pos
         out: Lexeme.STRING_LIKE | None = None
@@ -234,7 +222,7 @@ class Lexer:
             self._pos_rollback()
         return out, all_errors
 
-    def _parse_string_like_interp(self) -> LexerRes[list[Lexeme.Type] | None]:
+    def _parse_string_like_interp(self) -> _Res[list[Lexeme.Type] | None]:
         out: list[Lexeme.Type] = []
         brace_depth: int = 1
         all_errors = self._mk_err_box()
@@ -265,48 +253,3 @@ class Lexer:
                         ...
                 case _:
                     break
-
-    def _error(self, msg: str, *, error_t: type[LexerError]) -> LexerError:
-        return error_t(f"at {self.pos} : {msg}")
-
-    def _mk_err_box(self) -> LexerErrorBox:
-        return LexerErrorBox(
-            error_t=LexerError,
-            error_factory=self._error,
-        )
-
-    def _peek(self) -> str | None:
-        try:
-            return self.source[self.pos]
-        except IndexError:
-            return None
-
-    def _next(self) -> str | None:
-        if (peeked := self._peek()) is not None:
-            self.pos += 1
-        return peeked
-
-    def _starts_with(self, x: str) -> bool:
-        # `[x : ]` syntax doesn't yield index errors
-        return self.source[self.pos :].startswith(x)
-
-    def _pos_checkpoint(self) -> None:
-        self.pos_stack.insert(0, self.pos)
-
-    def _pos_rollback(self) -> None:
-        self.pos = self.pos_stack.pop(0)
-
-    def _bake_t[T: Lexeme.Type](
-        self,
-        lexeme_t: type[T],
-        pos_start: int | None = None,
-        pos_end: int | None = None,
-        **kwargs: object,
-    ) -> T:
-        pos_start = pos_start or self.pos
-        pos_end = pos_end or self.pos
-        return lexeme_t(
-            pos_start=pos_start,
-            pos_end=pos_end,
-            **kwargs,  # pyright: ignore[reportArgumentType]
-        )

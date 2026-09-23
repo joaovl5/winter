@@ -1,82 +1,68 @@
-from typing import ClassVar, override
+from typing import override
 
-from attrs import define
+from winter.utils.types import Symbol, def_sym
 
 
 class Lexeme:
-    @define
-    class _Base:
-        pos_start: int
-        pos_end: int
+    _Base: type[Symbol] = Symbol
 
-        _SYMBOL: ClassVar[str | None] = None
-
-        def _repr(self) -> str | None:
-            return None
-
-        @override
-        def __repr__(self) -> str:
-            out = self._repr() or self._SYMBOL
-
-            return f"«{self.pos_start} '{out}' {self.pos_end}»"
-
-    @define(repr=False)
+    @def_sym
     class OPEN_PAREN(_Base):
-        _SYMBOL: ClassVar[str | None] = "("
+        _SYMBOL = "("
 
-    @define(repr=False)
+    @def_sym
     class OPEN_BRACKET(_Base):
-        _SYMBOL: ClassVar[str | None] = "["
+        _SYMBOL = "["
 
-    @define(repr=False)
+    @def_sym
     class OPEN_BRACE(_Base):
-        _SYMBOL: ClassVar[str | None] = "{"
+        _SYMBOL = "{"
 
-    @define(repr=False)
+    @def_sym
     class CLOSE_PAREN(_Base):
-        _SYMBOL: ClassVar[str | None] = ")"
+        _SYMBOL = ")"
 
-    @define(repr=False)
+    @def_sym
     class CLOSE_BRACKET(_Base):
-        _SYMBOL: ClassVar[str | None] = "]"
+        _SYMBOL = "]"
 
-    @define(repr=False)
+    @def_sym
     class CLOSE_BRACE(_Base):
-        _SYMBOL: ClassVar[str | None] = "}"
+        _SYMBOL = "}"
 
-    @define(repr=False)
+    @def_sym
     class HASH(_Base):
-        _SYMBOL: ClassVar[str | None] = "#"
+        _SYMBOL = "#"
 
-    @define(repr=False)
+    @def_sym
     class AT(_Base):
-        _SYMBOL: ClassVar[str | None] = "@"
+        _SYMBOL = "@"
 
-    @define(repr=False)
+    @def_sym
     class EXCLAMATION(_Base):
-        _SYMBOL: ClassVar[str | None] = "!"
+        _SYMBOL = "!"
 
-    @define(repr=False)
+    @def_sym
     class QUESTION_MARK(_Base):
-        _SYMBOL: ClassVar[str | None] = "?"
+        _SYMBOL = "?"
 
-    @define(repr=False)
+    @def_sym
     class BACKTICK(_Base):
-        _SYMBOL: ClassVar[str | None] = "`"
+        _SYMBOL = "`"
 
-    @define(repr=False)
+    @def_sym
     class COMMA(_Base):
-        _SYMBOL: ClassVar[str | None] = ","
+        _SYMBOL = ","
 
-    @define(repr=False)
+    @def_sym
     class DOT(_Base):
-        _SYMBOL: ClassVar[str | None] = "."
+        _SYMBOL = "."
 
-    @define(repr=False)
+    @def_sym
     class ELLIPSIS(_Base):
-        _SYMBOL: ClassVar[str | None] = "…"
+        _SYMBOL = "…"
 
-    @define(repr=False)
+    @def_sym
     class ATOM(_Base):
         value: str
 
@@ -84,7 +70,7 @@ class Lexeme:
         def _repr(self) -> str | None:
             return self.value
 
-    @define(repr=False)
+    @def_sym
     class NUMBER(_Base):
         value: str
 
@@ -92,7 +78,7 @@ class Lexeme:
         def _repr(self) -> str | None:
             return self.value
 
-    @define(repr=False)
+    @def_sym
     class STRING_LIKE(_Base):
         parts: list[StringLikeLex.Type]
         is_path: bool
@@ -127,7 +113,7 @@ class Lexeme:
 
 
 class StringLikeLex:
-    @define(repr=False)
+    @def_sym
     class TEXT:
         value: str
 
@@ -135,7 +121,7 @@ class StringLikeLex:
         def __repr__(self) -> str:
             return self.value
 
-    @define(repr=False)
+    @def_sym
     class EXPR:
         value: list[Lexeme.Type]
 

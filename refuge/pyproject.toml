@@ -13,7 +13,7 @@
     "loguru>=0.7.3",
     "more-itertools>=11.1.0",
     "rich>=15.0.0",
-]
+  ]
 
   [project.scripts]
     winter = "winter:main"
@@ -21,3 +21,16 @@
 [build-system]
   requires      = ["uv_build>=0.12.3,<0.13.0"]
   build-backend = "uv_build"
+
+[tool.basedpyright]
+  include                         = ["src"]
+  exclude                         = ["**/__pycache__"]
+  typeCheckingMode                = "recommended"
+  failOnWarnings                  = true
+  enableReachabilityAnalysis      = true
+  analyzeUnannotatedFunctions     = true
+  reportExplicitAny               = false
+  reportAny                       = false
+  reportUnannotatedClassAttribute = false
+  reportPrivateUsage              = false
+  reportImportCycles              = false              # pyright is stupid
