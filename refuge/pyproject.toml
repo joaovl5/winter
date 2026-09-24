@@ -13,7 +13,7 @@
     "loguru>=0.7.3",
     "more-itertools>=11.1.0",
     "rich>=15.0.0",
-  ]
+]
 
   [project.scripts]
     winter = "winter:main"

@@ -25,7 +25,7 @@ class ParenParser:
             return None, self.p._single_err(EXPECTED_PAREN)
         if (head_tk := self.p._peek()) is None:
             return None, self.p._single_err(UNTERMINATED_BLOCK)
-        if out := self._parse_paren_special(head_tk=head_tk):
+        if (out := self._parse_paren_special(head_tk=head_tk)) is not None:
             return out
         c_head: CallableHead.Type
         if (op := self._parse_op(head_tk=head_tk)) is not None:
@@ -87,13 +87,13 @@ class ParenParser:
         if not isinstance(head_tk, Lexeme.ATOM):
             return None
         try:
-            return CallableHead.OPERATOR[head_tk.value]
-        except KeyError:
+            return CallableHead.OPERATOR(head_tk.value)
+        except ValueError:
             return None
 
-    def _parse_paren_special(self, *, head_tk: Lexeme.Type) -> _ASTRes:
+    def _parse_paren_special(self, *, head_tk: Lexeme.Type) -> _ASTRes | None:
         if not isinstance(head_tk, Lexeme.ATOM):
-            return None, []
+            return None
         match head_tk.value:
             case "let":
                 return self.p._binds.parse_let()
@@ -109,4 +109,4 @@ class ParenParser:
             case "enum":
                 return self.p._todo()
             case _:
-                return None, []
+                return None

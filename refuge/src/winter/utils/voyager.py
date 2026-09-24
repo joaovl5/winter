@@ -25,6 +25,20 @@ class Voyager[In, Target, Err: Exception](ABC):
     def _source_elems(self) -> SequenceView[In]:
         return self.source_iter.elements()
 
+    # tries from cache and falls-back to forcing iterator forward
+    def _get_source_elem(self, pos: int) -> In | None:
+        try:
+            return self._source_elems[pos]
+        except IndexError:
+            pass
+
+        if pos != self.pos:
+            self.source_iter.seek(pos)
+        out = self._peek()
+        if pos != self.pos:
+            self.source_iter.seek(self.pos)
+        return out
+
     # like 'parse' but will collect from the generator
     def parse_total(self) -> Result[list[Target]]:
         out: list[Target] = []
@@ -118,7 +132,7 @@ class Voyager[In, Target, Err: Exception](ABC):
     # FIXME: currently this isnt working properly because __eq__ does pos_start
     # we'll need something to deal in type-level sequences without initializing
     def _starts_with(self, x: Sequence[In]) -> bool:
-        y = self._peek_n(len(x))
+        y = self._peek_n(max(len(x) - 1, 0))
         return tuple(x) == tuple(y)
 
     def _get_range(self, a: int, b: int) -> list[In]:

@@ -1,6 +1,7 @@
 from typing import override
 
 from attrs import Factory, define, field
+from loguru import logger
 
 from winter.lexer.lexemes import Lexeme
 from winter.utils.voyager import Voyager
@@ -48,7 +49,13 @@ class Parser(Voyager[Lexeme.Type, AST.Type, ParserError]):
 
     @override
     def _resolve_some_pos(self, pos: int) -> tuple[int, int]:
-        tk = self._source_elems[pos]
+        tk = self._get_source_elem(pos)
+        if tk is None:
+            if pos > 0:
+                return self._resolve_some_pos(pos - 1)
+            else:
+                logger.warning("Had to fallback to (0, 0)")
+                return 0, 0
         return tk.pos_start, tk.pos_end
 
     def _todo(self) -> _ASTRes:

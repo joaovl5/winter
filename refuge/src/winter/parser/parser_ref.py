@@ -58,7 +58,7 @@ class RefParser:
                     pos_end=tk.pos_end,
                     value=tk.value,
                 )
-            elif isinstance(tk, Lexeme.STRING_LIKE):
+            elif isinstance(tk, Lexeme.STRING_LIKE) and not tk.is_path:
                 str_val, errors = self.p._scalar.parse_str(tk)
                 if str_val is None:
                     return None, errors

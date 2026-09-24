@@ -36,7 +36,13 @@ class FuncParser:
         if (name_tk := self.p._peek()) is None:
             return None, self.p._single_err(UNTERMINATED_FN)
         name: TypedReference | None = None
-        if isinstance(name_tk, Lexeme.ATOM):
+        if isinstance(name_tk, Lexeme.ATOM) and not (
+            # avoids parsing an unpacked param name as the function's name
+            (at_tk := self.p._peek_nth(1))
+            and isinstance(at_tk, Lexeme.AT)
+            and (open_brace_tk := self.p._peek_nth(2))
+            and isinstance(open_brace_tk, Lexeme.OPEN_BRACE)
+        ):
             name, errors = self.p._ref.parse_typed_ref()
             all_errors.extend(errors)
             if name is None:

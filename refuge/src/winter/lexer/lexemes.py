@@ -145,4 +145,5 @@ SINGLE_CHAR_LEXEMES: dict[str, type[Lexeme.Type]] = {
     "?": Lexeme.QUESTION_MARK,
     ",": Lexeme.COMMA,
     ".": Lexeme.DOT,
+    "@": Lexeme.AT,
 }
