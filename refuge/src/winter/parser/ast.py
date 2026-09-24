@@ -1,5 +1,8 @@
+import inspect
 from enum import Enum
 from typing import Self, override
+
+import rich.repr as r
 
 from winter.utils.types import Symbol, def_sym
 
@@ -9,7 +12,19 @@ type ManyInherits = list[InheritNode]
 
 
 class AST:
-    _Base: type[Symbol] = Symbol
+    @r.auto(angular=False)
+    class _Base(Symbol):
+        def __rich_repr__(self) -> r.Result:
+            sig = inspect.signature(self.__init__)
+            params = sig.parameters
+            is_single_param = len(params) - 2 == 1
+            for name, param in params.items():
+                if name in {"pos_start", "pos_end"}:
+                    continue
+                if is_single_param:
+                    yield getattr(self, param.name)
+                else:
+                    yield param.name, getattr(self, param.name)
 
     @def_sym
     class NIL(_Base):

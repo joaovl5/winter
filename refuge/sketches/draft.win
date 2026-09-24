@@ -1,6 +1,5 @@
-[(
-  locals
-  p$"Hello how are you {(+ 1 1)}"
-  "The answer is "
-  (- 1 1)
-)]
+[(locals
+
+  abc 1
+
+  my-fun (fn {} nil))]
