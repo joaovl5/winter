@@ -137,13 +137,13 @@ class BindsParser:
                 break
             if (
                 (isinstance(tk_0, Lexeme.OPEN_PAREN))
-                and (tk_1 := self.p._peek_n(1))
+                and (tk_1 := self.p._peek_nth(1))
                 and (isinstance(tk_1, Lexeme.ATOM))
                 and tk_1.value == "inherit"
             ):
                 _ = self.p._next()
                 _ = self.p._next()
-                new_inherits, new_errors = self._parse_inherit()
+                new_inherits, new_errors = self.parse_inherit()
                 all_errors.extend(new_errors)
                 if new_inherits:
                     inherits.extend(new_inherits)
@@ -163,7 +163,7 @@ class BindsParser:
         _ = self.p._next()
         all_errors = self.p._mk_err_box()
         pos_start, _ = self.p._get_resolved_pos()
-        inherits, errors = self._parse_inherit()
+        inherits, errors = self.parse_inherit()
         all_errors.extend(errors)
         if inherits is None:
             return None, all_errors
@@ -174,7 +174,7 @@ class BindsParser:
             inherits=inherits,
         ), all_errors
 
-    def _parse_inherit(self) -> _Res[ManyInherits | None]:
+    def parse_inherit(self) -> _Res[ManyInherits | None]:
         out: ManyInherits = []
         all_errors = self.p._mk_err_box()
 
@@ -211,29 +211,13 @@ class BindsParser:
                 return None, all_errors
             if isinstance(item_tk, Lexeme.CLOSE_PAREN):
                 break
-            typed_ref, errors = self._parse_typed_ref()
+            typed_ref, errors = self.p._ref.parse_typed_ref()
             all_errors.extend(errors)
             if typed_ref is None:
                 return None, all_errors
             items.append(typed_ref)
         _ = self.p._next()
         return items, all_errors
-
-    def _parse_typed_ref(self) -> _Res[TypedReference | None]:
-        all_errors = self.p._mk_err_box()
-        if (tk := self.p._next()) is None:
-            all_errors.push(EXPECTED_REFERENCE)
-            return None, all_errors
-        if not isinstance(tk, Lexeme.ATOM):
-            all_errors.push(EXPECTED_REFERENCE_ATOM)
-            return None, all_errors
-
-        typed_ref = TypedReference(
-            name=tk.value,
-            # do types later!!!
-            annotation=None,
-        )
-        return typed_ref, all_errors
 
     def _parse_one_bind(self) -> _Res[OneBind | None]:
         if (bind_tk := self.p._next()) is None:

@@ -74,6 +74,11 @@ class Voyager[In, Target, Err: Exception](ABC):
             error_factory=self._error,
         )
 
+    def _single_err(self, msg: str) -> ErrorBox[Err]:
+        box = self._mk_err_box()
+        box.push(msg)
+        return box
+
     def _peek(self) -> In | None:
         try:
             return self.source_iter.peek()
@@ -103,6 +108,15 @@ class Voyager[In, Target, Err: Exception](ABC):
         self.source_iter.relative_seek(move_back)
         return out
 
+    def _peek_nth(self, nth: int = 0) -> In | None:
+        lst = self._peek_n(nth)
+        try:
+            return lst[nth]
+        except IndexError:
+            return None
+
+    # FIXME: currently this isnt working properly because __eq__ does pos_start
+    # we'll need something to deal in type-level sequences without initializing
     def _starts_with(self, x: Sequence[In]) -> bool:
         y = self._peek_n(len(x))
         return tuple(x) == tuple(y)

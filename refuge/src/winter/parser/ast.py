@@ -1,4 +1,4 @@
-from enum import StrEnum
+from enum import Enum
 from typing import Self, override
 
 from winter.utils.types import Symbol, def_sym
@@ -44,8 +44,6 @@ class AST:
                 + "' ".join((f"'{part.__repr__()}") for part in self.parts)
             )
 
-        value: str
-
     @def_sym
     class IDENTIFIER(_Base):
         value: str
@@ -63,14 +61,21 @@ class AST:
             return "list' " + ("' ".join(f"'{x._repr()}" for x in self.items))
 
     @def_sym
+    class SELECTION(_Base):
+        items: list[AST.Type]
+
+        @override
+        def _repr(self) -> str | None:
+            return "sel' " + ("' ".join(f"'{x._repr()}" for x in self.items))
+
+    @def_sym
     class MAP(_Base):
-        binds: list[
-            tuple[  # one tuple is one bind
-                list[AST.Type],  # one or more path components
-                AST.Type,  # bound value
-            ]
+        type MapBind = tuple[  # one tuple is one bind
+            list[AST.Type],  # one or more path components
+            AST.Type,  # bound value
         ]
-        inherits: list[InheritNode]
+        binds: list[MapBind]
+        inherits: ManyInherits
 
         @override
         def _repr(self) -> str | None:
@@ -86,13 +91,13 @@ class AST:
     @def_sym
     class CALLABLE(_Base):
         head: CallableHead.Type
-        body: list[AST.Type]
+        tail: list[AST.Type]
 
         @override
         def _repr(self) -> str | None:
 
             return f"{self.head.__repr__()}' " + "' ".join(
-                f"'{x._repr()}" for x in self.body
+                f"'{x._repr()}" for x in self.tail
             )
 
     @def_sym
@@ -132,7 +137,7 @@ class AST:
     @def_sym
     class FUNCTION(_Base):
         name: TypedReference | None
-        params: list[FuncParam]
+        params: list[FuncParam.Type]
         body: list[AST.Type]
 
         @override
@@ -166,6 +171,7 @@ class AST:
         | STRING_LIKE
         | IDENTIFIER
         | LIST
+        | SELECTION
         | MAP
         | CALLABLE
         | INHERITS
@@ -195,7 +201,7 @@ class DeclaredType:
 
 
 class CallableHead:
-    class OPERATOR(StrEnum):
+    class OPERATOR(Enum):
         ADD = "+"
         SUB = "-"
         MUL = "*"
@@ -218,10 +224,6 @@ class CallableHead:
         LPIPE = "<|"
         RPIPE = "|>"
 
-        @override
-        def __repr__(self) -> str:
-            return self.value
-
     type EXPR = AST.Type
     type Type = OPERATOR | EXPR
 
@@ -236,6 +238,9 @@ class TypedReference:
         return f"{self.name}"
 
 
+type UnwrappedParam = tuple[TypedReference, AST.Type | None]
+
+
 class FuncParam:
     type PLAIN = TypedReference
 
@@ -244,7 +249,7 @@ class FuncParam:
         # name for arg if named
         name: TypedReference | None
         # unpacked params, optionally with defaults (AST.Type)
-        params: list[tuple[TypedReference, AST.Type | None]]
+        params: list[UnwrappedParam]
         # when ellipsis is detected
         allow_extra: bool
 
@@ -338,11 +343,10 @@ class StringLikeAST:
 
     @def_sym
     class EXPR:
-        value: list[AST.Type]
+        value: AST.Type
 
         @override
         def __repr__(self) -> str:
-            out = " | ".join(x._repr() or x._SYMBOL or "_" for x in self.value)
-            return f"«{out}»"
+            return f"«{self.value._repr() or self.value._SYMBOL}»"
 
     type Type = TEXT | EXPR
