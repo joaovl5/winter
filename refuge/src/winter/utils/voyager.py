@@ -129,7 +129,7 @@ class Voyager[In, Target, Err: Exception](ABC):
         except IndexError:
             return None
 
-    # FIXME: currently this isnt working properly because __eq__ does pos_start
+    # FIXME: currently this isnt working properly because __eq__ uses pos_start
     # we'll need something to deal in type-level sequences without initializing
     def _starts_with(self, x: Sequence[In]) -> bool:
         y = self._peek_n(max(len(x) - 1, 0))
