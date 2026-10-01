@@ -47,6 +47,14 @@ class AST:
             return self.value
 
     @def_sym
+    class IDENTIFIER(_Base):
+        value: str
+
+        @override
+        def _repr(self) -> str | None:
+            return self.value
+
+    @def_sym
     class STRING_LIKE(_Base):
         parts: list[StringLikeAST.Type]
         is_path: bool
@@ -58,14 +66,6 @@ class AST:
                 + "' "
                 + "' ".join((f"'{part.__repr__()}") for part in self.parts)
             )
-
-    @def_sym
-    class IDENTIFIER(_Base):
-        value: str
-
-        @override
-        def _repr(self) -> str | None:
-            return self.value
 
     @def_sym
     class LIST(_Base):

@@ -1,5 +1,3 @@
-[(locals
-
-  abc 1
-
-  my-fun (fn {} nil))]
+[(let [a 5 b 6]
+  (fn [x y z]
+    (+ x y a)))]
