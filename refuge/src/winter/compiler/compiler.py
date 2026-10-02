@@ -42,6 +42,10 @@ class Compiler(Voyager[AST.Type, nix.AST.Type, CompilerError]):
             return None, []
         return self._parse_one_ast(x)
 
+    # compiler optimizations and source pre-processing
+    def _optimize_ast(self, x: AST.Type) -> _Res[AST.Type | None]:
+        pass
+
     def _parse_one_ast(self, x: AST.Type) -> _NixRes:
         match x:
             case AST.NIL():
