@@ -9,7 +9,7 @@ from winter import nix
 from winter.compiler.compiler import Compiler
 from winter.lexer.lexemes import Lexeme
 from winter.lexer.lexer import Lexer
-from winter.parser.ast import AST
+from winter.parser.ast import AST, Context, Project
 from winter.parser.parser import Parser
 from winter.utils.io import read_iter
 
@@ -27,15 +27,6 @@ class SourceHandler:
     valid_exts: frozenset[str] = VALID_EXTS
     format_nix: bool = True
 
-    def handle(self) -> None:
-        logger.debug("Starting source loading...")
-        # we won't be able to remain this flow of doing it all in one go per file after
-        # things such as namespaces get introduced
-        for source_file in self._walk_files():
-            logger.debug(f"Handling file: {source_file}")
-            self._handle_file(source_file)
-        logger.debug("Done handling all files")
-
     def _walk_files(self) -> Generator[Path]:
         for root, _, xs in self.input_dir.walk():
             for x_raw in xs:
@@ -45,7 +36,43 @@ class SourceHandler:
                     continue
                 yield x
 
-    def _handle_file(self, file: Path) -> None:
+    def handle(self) -> None:
+        logger.debug("Starting source loading...")
+        contexts: list[Context] = []
+        source_files = tuple(self._walk_files())
+        logger.debug("Collected {} files", len(source_files))
+        for source_file in source_files:
+            logger.debug("Parsing file: {}", source_file)
+            # we can try doing a lazy-parse thing later (parse on demand, just-in-time)
+            # but for now this eager approach is good enough
+            file_ast = self._handle_file(source_file)
+            file_ctx = Context(
+                file=source_file,
+                name=source_file.name,
+                body=file_ast,
+            )
+            contexts.append(file_ctx)
+        project = Project(
+            dir=self.input_dir,
+            name=self.input_dir.name,
+            contexts=contexts,
+        )
+        logger.debug("Starting compilation of {} contexts", len(contexts))
+        compiler = self._mk_compiler(project)
+        out, err = compiler.compile()
+        if out is None or err:
+            raise WinterError("Compilation failed", err)
+        for ctx_key, nix_ast in out.tree.items():
+            input_ctx = compiler._input_tree[ctx_key]
+            save_path = self._get_out_counterpart(input_ctx.file)
+            rendered_nix = self._render_nix(nix_ast)
+            _ = save_path.write_text(rendered_nix)
+        logger.debug(
+            "Compilation successful, written to {} output files",
+            len(out.tree),
+        )
+
+    def _handle_file(self, file: Path) -> list[AST.Type]:
         if not file.exists():
             msg = f"File not found: {file}"
             raise WinterError(msg)
@@ -54,18 +81,7 @@ class SourceHandler:
         lexer_stream = lexer.parse_lazy_strict()
         parser = self._mk_parser(lexer_stream)
         parser_stream = parser.parse_lazy_strict()
-        compiler = self._mk_compiler(parser_stream)
-        compiler_stream = compiler.parse_lazy_strict()
-        compiler_out = list(compiler_stream)
-        if len(compiler_out) != 1:
-            msg = f"Nix AST didn't compile into one root node for file: {file}"
-            raise WinterError(msg)
-        compiler_node = compiler_out[0]
-        rendered_nix = self._render_nix(compiler_node)
-
-        out_file = self._get_out_counterpart(file)
-
-        _ = out_file.write_text(rendered_nix)
+        return list(parser_stream)
 
     def _get_out_counterpart(self, input_path: Path) -> Path:
         relative_path = input_path.relative_to(self.input_dir)
@@ -78,7 +94,7 @@ class SourceHandler:
     def _mk_parser(self, data: Iterator[Lexeme.Type]) -> Parser:
         return Parser(data)
 
-    def _mk_compiler(self, data: Iterator[AST.Type]) -> Compiler:
+    def _mk_compiler(self, data: Project) -> Compiler:
         return Compiler(data)
 
     def _render_nix(self, data: nix.AST.Type) -> str:

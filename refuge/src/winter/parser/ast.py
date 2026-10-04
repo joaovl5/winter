@@ -1,14 +1,32 @@
 import inspect
 from enum import Enum
+from pathlib import Path
 from typing import Self, override
 
 import rich.repr as r
 
-from winter.utils.types import Symbol, def_sym
+from winter.utils.types import Symbol, def_strict, def_sym
 
 type OneBind = tuple[TypedReference, AST.Type]
 type ManyBinds = list[OneBind]
 type ManyInherits = list[InheritNode]
+
+
+# we don't call these "modules" because of nixpkgs modules
+# neither "namespaces" because its already used elsewhere
+# for other purposes through-out the codebase
+@def_strict
+class Context:
+    file: Path
+    name: str
+    body: list[AST.Type]
+
+
+@def_strict
+class Project:
+    contexts: list[Context]
+    dir: Path
+    name: str | None = None
 
 
 class AST:

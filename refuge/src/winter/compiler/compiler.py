@@ -1,7 +1,8 @@
 from collections.abc import Sequence
-from typing import Any, override
+from pathlib import Path
+from typing import Any
 
-from attrs import Factory, define, field
+from attrs import Factory, define, evolve, field
 from loguru import logger
 
 from winter import nix
@@ -11,26 +12,30 @@ from winter.compiler.rules.locals import LocalsRule
 from winter.parser.ast import (
     AST,
     CallableHead,
+    Context,
     FuncParam,
     InheritNode,
     OneBind,
+    Project,
     StringLikeAST,
     TypedReference,
     UnwrappedParam,
 )
-from winter.utils.voyager import Voyager
 
 from .types import OPERATOR_MAPPING, UNARY_OPERATORS, OpSpecialCase
 
 
-class CompilerError(RuntimeError): ...
+@define
+class CompilerError(RuntimeError):
+    msg: str
+    wrapped_errors: Sequence[Exception] = field(default=())
 
 
-EXPECTED_ONE_NODE = "Expected a single node within the parsed string interp"
 EXPECTED_NON_EMPTY_SEL = (
     "Expected at least two nodes within a selection (head and tail)"
 )
 UNEXPECTED_NONE_OPTIM = "Unexpected `None` after AST optimization"
+SKIPPING_CONTEXT = "Skipping Context `{}` since no Nix root AST was compiled."
 
 
 def _mk_rules() -> list[BaseRule[Any]]:
@@ -41,48 +46,117 @@ def _mk_rules() -> list[BaseRule[Any]]:
 
 
 @define
-class Compiler(Voyager[AST.Type, nix.AST.Type, CompilerError]):
+class CompilerOutput:
+    tree: dict[Path, nix.AST.Type]
+
+
+@define
+class Compiler:
+    project: Project
     error_t: type[CompilerError] = field(default=CompilerError, init=False)
     rules: list[BaseRule[Any]] = field(default=Factory(_mk_rules), init=False)
+    _input_tree: dict[Path, Context] = field(init=False)
+    _output_tree: dict[Path, nix.AST.Type] = field(init=False)
 
-    type _Res[X] = Compiler.Result[X]
+    def __attrs_post_init__(self) -> None:
+        self._input_tree = {
+            (c.file.relative_to(self.project.dir)): c for c in self.project.contexts
+        }
+        self._output_tree = {}
+
+    type _Res[X] = tuple[X | None, CompilerError | None]
     type _NixRes = _Res[nix.AST.Type | None]
 
-    @override
-    def _parse_one(self) -> _NixRes:
-        if (x := self._next()) is None:
-            return None, []
-        # optimization just-in-time, for the moment, is good enough
-        x, err = self._optimize_ast(x)
-        if err:
-            return None, err
-        if x is None:
-            return None, self._single_err(UNEXPECTED_NONE_OPTIM)
-        return self._parse_one_ast(x)
+    def compile(self) -> _Res[CompilerOutput]:
+        inp_tree, err = self._optimize_tree(self._input_tree)
+        if inp_tree is None or err:
+            return self._error("Error during `_optimize_tree`", err)
+        self._input_tree = inp_tree
+        self._output_tree = {}
+
+        for ctx_key in self._input_tree:
+            self._compile_context(ctx_key)
+
+        return CompilerOutput(tree=self._output_tree), None
+
+    def _compile_context(self, ctx_key: Path) -> None:
+        ctx = self._input_tree[ctx_key]
+        # ast, by this point, should be already fully optimized
+        nix_ast: nix.AST.Type | None = None
+
+        for node in ctx.body:
+            if nix_ast is not None:
+                msg = (
+                    f"At Context `{ctx_key}`, Winter couldn't compile into "
+                    "one top-level Nix value."
+                )
+                raise CompilerError(msg)
+            nix_ast, err = self._parse_one_ast(node)
+            if nix_ast is None or err:
+                msg = f"Couldn't compile Context `{ctx_key}`"
+                raise CompilerError(
+                    msg,
+                    wrapped_errors=(err,) if err else (),
+                )
+        if nix_ast is None:
+            logger.warning(SKIPPING_CONTEXT, ctx_key)
+        else:
+            self._output_tree[ctx_key] = nix_ast
+
+    def _optimize_tree(self, tree: dict[Path, Context]) -> _Res[dict[Path, Context]]:
+        out: dict[Path, Context] = {}
+        for k, v in tree.items():
+            out_ctx, err = self._optimize_context(v)
+            if out_ctx is None or err:
+                return self._error("Error during `_optimize_context`", err)
+            out[k] = out_ctx
+
+        return out, None
+
+    def _optimize_context(self, ctx: Context) -> _Res[Context]:
+        out_body: list[AST.Type] = []
+
+        for node in ctx.body:
+            out_node, err = self._optimize_ast(node)
+            if out_node is None or err:
+                return self._error("Error during `_optimize_ast` call", err)
+            assert out_node
+            out_body.append(out_node)
+        return evolve(ctx, body=out_body), None
+
+    def _error(
+        self,
+        msg: str,
+        *other_errors: Exception | None,
+    ) -> tuple[None, CompilerError]:
+        return None, CompilerError(
+            msg=msg,
+            wrapped_errors=[x for x in other_errors if x],
+        )
 
     # compiler optimizations and source pre-processing
-    def _optimize_ast(self, x: AST.Type) -> _Res[AST.Type | None]:
+    def _optimize_ast(self, x: AST.Type) -> _Res[AST.Type]:
         for rule in self.rules:
             out, err = rule.run(x)
             if err:
                 msg = f"Error during rule '{rule!r}': {err!r}"
-                return None, self._single_err(msg)
+                return self._error(msg)
             if out is None:
                 msg = f"Rule '{rule!r}' didn't return an AST!"
-                return None, self._single_err(msg)
+                return self._error(msg)
             x = out
-        return x, []
+        return x, None
 
     def _parse_one_ast(self, x: AST.Type) -> _NixRes:
         match x:
             case AST.NIL():
-                return nix.AST.NULL(), []
+                return nix.AST.NULL(), None
             case AST.BOOL(value=v):
-                return nix.AST.BOOL(value=v), []
+                return nix.AST.BOOL(value=v), None
             case AST.NUMBER(value=v):
-                return nix.AST.NUMBER(value=v), []
+                return nix.AST.NUMBER(value=v), None
             case AST.IDENTIFIER(value=v):
-                return nix.AST.IDENTIFIER(value=v), []
+                return nix.AST.IDENTIFIER(value=v), None
             case AST.STRING_LIKE(parts=parts, is_path=is_path):
                 nix_parts: list[nix.StringLikePart.Type] = []
                 for part in parts:
@@ -93,15 +167,15 @@ class Compiler(Voyager[AST.Type, nix.AST.Type, CompilerError]):
                 return nix.AST.STRING_LIKE(
                     value=nix_parts,
                     is_path=is_path,
-                ), []
+                ), None
             case AST.LIST(items=items):
                 nix_items, errors = self._parse_list_like(items)
                 if nix_items is None:
                     return None, errors
-                return nix.AST.LIST(entries=nix_items), []
+                return nix.AST.LIST(entries=nix_items), None
             case AST.SELECTION(items=items):
                 if len(items) < 2:
-                    return None, self._single_err(EXPECTED_NON_EMPTY_SEL)
+                    return self._error(EXPECTED_NON_EMPTY_SEL)
                 head, tail = items[0], items[1:]
 
                 nix_head, errors = self._parse_one_ast(head)
@@ -113,12 +187,12 @@ class Compiler(Voyager[AST.Type, nix.AST.Type, CompilerError]):
                 return nix.AST.SELECTION(
                     base=nix_head,
                     path=nix_tail,
-                ), []
+                ), None
             case AST.MAP(binds=binds, inherits=inherits):
                 entries, errors = self._parse_bindings((*binds, *inherits))
                 if entries is None:
                     return None, errors
-                return nix.AST.ATTRSET(entries=entries), []
+                return nix.AST.ATTRSET(entries=entries), None
             case AST.CALLABLE():
                 return self._parse_callable(x)
             case AST.LET(binds=binds, inherits=inherits, body=body):
@@ -128,7 +202,7 @@ class Compiler(Voyager[AST.Type, nix.AST.Type, CompilerError]):
                 nix_body, errors = self._parse_one_ast(body)
                 if nix_body is None:
                     return None, errors
-                return nix.AST.LET(entries=entries, body=nix_body), []
+                return nix.AST.LET(entries=entries, body=nix_body), None
             case AST.FUNCTION():
                 return self._parse_fn(x)
             case AST.IF(
@@ -149,9 +223,11 @@ class Compiler(Voyager[AST.Type, nix.AST.Type, CompilerError]):
                     condition=nix_cond,
                     case_true=nix_case_true,
                     case_false=nix_case_false,
-                ), []
+                ), None
             case AST.LOCALS() | AST.INHERITS():
-                return self._todo()
+                raise RuntimeError(
+                    "Optimizations should have taken care of locals/inherits!",
+                )
 
             case _:
                 return self._todo()
@@ -188,7 +264,7 @@ class Compiler(Voyager[AST.Type, nix.AST.Type, CompilerError]):
                 return nix.AST.LAMBDA(
                     arg=arg,
                     body=nix_body,
-                ), []
+                ), None
             case [arg, *rest]:
                 nested, errors = self._parse_fn_inner(
                     nix_body=nix_body,
@@ -199,7 +275,7 @@ class Compiler(Voyager[AST.Type, nix.AST.Type, CompilerError]):
                 return nix.AST.LAMBDA(
                     arg=arg,
                     body=nested,
-                ), []
+                ), None
             case _:
                 raise RuntimeError("assumedly unreachable state")
 
@@ -217,10 +293,10 @@ class Compiler(Voyager[AST.Type, nix.AST.Type, CompilerError]):
                     name=self._parse_typed_ref(name) if name else None,
                     params=unw_params,
                     allow_extra=allow_extra,
-                ), []
+                ), None
             case _:
                 ref = self._parse_typed_ref(x)
-                return nix.LambdaArg.PLAIN(value=ref), []
+                return nix.LambdaArg.PLAIN(value=ref), None
 
     def _parse_unwrapped_params(
         self,
@@ -234,7 +310,7 @@ class Compiler(Voyager[AST.Type, nix.AST.Type, CompilerError]):
                 if nix_def is None:
                     return None, errors
             unw_params.append((self._parse_typed_ref(p_ref), nix_def))
-        return unw_params, []
+        return unw_params, None
 
     def _parse_callable(self, x: AST.CALLABLE) -> _NixRes:
         nix_tail, errors = self._parse_list_like(x.tail)
@@ -247,7 +323,7 @@ class Compiler(Voyager[AST.Type, nix.AST.Type, CompilerError]):
                 nix_head, errors = self._parse_one_ast(x.head)
                 if nix_head is None:
                     return None, errors
-                return nix.AST.APPLY(function=nix_head, args=nix_tail), []
+                return nix.AST.APPLY(function=nix_head, args=nix_tail), None
 
     def _parse_callable_op(
         self,
@@ -267,13 +343,13 @@ class Compiler(Voyager[AST.Type, nix.AST.Type, CompilerError]):
                     raise RuntimeError("unary is not ok in this situation")
                 if op not in UNARY_OPERATORS:
                     msg = f"Operator `{sym}` cannot be unary!"
-                    return None, self._single_err(msg)
+                    return self._error(msg)
                 return nix.AST.UNARY_OP(
                     value=unary_val,
                     op=sym,
-                ), []
+                ), None
             case [lhs, rhs]:
-                return nix.AST.BINARY_OP(lhs=lhs, rhs=rhs, op=sym), []
+                return nix.AST.BINARY_OP(lhs=lhs, rhs=rhs, op=sym), None
             case [lhs, *tail]:
                 rhs, errors = self._parse_callable_op(op=op, nix_tail=tail)
                 if rhs is None:
@@ -282,7 +358,7 @@ class Compiler(Voyager[AST.Type, nix.AST.Type, CompilerError]):
                     lhs=lhs,
                     rhs=rhs,
                     op=sym,
-                ), []
+                ), None
             case _:
                 raise RuntimeError("Unexpected callable case")
 
@@ -316,7 +392,7 @@ class Compiler(Voyager[AST.Type, nix.AST.Type, CompilerError]):
                         return None, errors
                     nix_bind = (parts, nix_x)
             nix_binds.append(nix_bind)
-        return nix_binds, []
+        return nix_binds, None
 
     def _parse_typed_ref(self, ref: TypedReference) -> str:
         return ref.name
@@ -330,37 +406,20 @@ class Compiler(Voyager[AST.Type, nix.AST.Type, CompilerError]):
             if nix_item is None:
                 return None, errors
             nix_list.append(nix_item)
-        return nix_list, []
+        return nix_list, None
 
-    def _handle_str_part(
-        self, x: StringLikeAST.Type
-    ) -> _Res[nix.StringLikePart.Type | None]:
+    def _handle_str_part(self, x: StringLikeAST.Type) -> _Res[nix.StringLikePart.Type]:
         match x:
             case StringLikeAST.TEXT(value=v):
-                return nix.StringLikePart.TEXT(value=v), []
+                return nix.StringLikePart.TEXT(value=v), None
             case StringLikeAST.EXPR(value=v):
-                exprs, errs = Compiler(
-                    source=iter((v,)),
-                ).parse_total()
-                match exprs:
-                    case [expr]:
-                        return nix.StringLikePart.EXPR(value=expr), errs
-                    case _:
-                        return None, [
-                            *errs,
-                            *self._single_err(EXPECTED_ONE_NODE),
-                        ]
-
-    @override
-    def _resolve_some_pos(self, pos: int) -> tuple[int, int]:
-        node = self._get_source_elem(pos)
-        if node is None:
-            if pos > 0:
-                return self._resolve_some_pos(pos - 1)
-            else:
-                logger.warning("Had to fallback to (0, 0)")
-                return 0, 0
-        return node.pos_start, node.pos_end
+                expr, err = self._parse_one_ast(v)
+                if expr is None or err:
+                    return self._error(
+                        "Error during string part compilation",
+                        err,
+                    )
+                return nix.StringLikePart.EXPR(value=expr), None
 
     def _todo(self) -> _NixRes:
         raise NotImplementedError

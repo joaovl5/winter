@@ -8,6 +8,8 @@
       testing_if =
         if (true == true)
         then 10
+        else if (false != false)
+        then 15
         else 20;
     in
       x + (y + (a + my_val)))

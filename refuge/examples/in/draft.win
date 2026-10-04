@@ -1,8 +1,16 @@
-[(let [a 5 b 6]
-  (fn [x y z]
+[(let [a 5
+       b 6]
+  (fn [x
+       y
+       z]
     (locals
       my_val 10
-      testing_if (if (= true true) 10 20))
+      testing_if
+      (if (= true true)
+       10
+       (if (not= false false)
+        15
+        20)))
     (+ x y a my_val)))
  (fn {pkgs ...}
    [(inherit pkgs (foo bar baz))])]
