@@ -16,7 +16,7 @@ endif
 syntax keyword WinterCommentTodo contained FIXME XXX TODO FIXME: XXX: TODO:
 
 " Winter comments
-syntax match WinterComment "#.*$" contains=WinterCommentTodo,@Spell
+syntax match WinterComment ";.*$" contains=WinterCommentTodo,@Spell
 
 syntax match WinterStringEscape '\v\\%([ntvr0zfe"\\]|x[[0-9a-fA-F]]\{2}|u[[0-9a-fA-F]]\{4}|U[[0-9a-fA-F]]\{6})' contained
 syntax region WinterString matchgroup=WinterStringDelimiter start=/"/ skip=/\\\\\|\\"/ end=/"/ contains=WinterStringEscape,@Spell

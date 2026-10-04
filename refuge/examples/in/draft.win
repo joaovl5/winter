@@ -4,6 +4,6 @@
       my_val 10
       testing_if (if (= true true) 10 20))
     (+ x y a my_val)))
-  (fn {pkgs ...}
-    [(inherit pkgs (foo bar baz))])
- ]
+ (fn {pkgs ...}
+   [(inherit pkgs (foo bar baz))])]
+
