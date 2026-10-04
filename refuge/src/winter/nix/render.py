@@ -38,6 +38,19 @@ def render_nix_ast(node: AST.Type) -> str:
                 out.append(".")
                 out.append(_dot_path_part(k))
             return "".join(out)
+        case AST.IF(
+            condition=condition,
+            case_true=case_true,
+            case_false=case_false,
+        ):
+            return (
+                "if "
+                + _render_as_arg(condition)
+                + " then "
+                + _render_as_arg(case_true)
+                + " else "
+                + _render_as_arg(case_false)
+            )
 
 
 def _render_lambda_arg(arg: LambdaArg.Type):

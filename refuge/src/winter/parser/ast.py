@@ -179,6 +179,12 @@ class AST:
                 + self.value.__repr__()
             )
 
+    @def_sym
+    class IF(_Base):
+        condition: AST.Type
+        case_true: AST.Type
+        case_false: AST.Type
+
     type Type = (
         NIL
         | BOOL
@@ -194,6 +200,7 @@ class AST:
         | LET
         | FUNCTION
         | DECLARED_TYPE
+        | IF
     )
 
 

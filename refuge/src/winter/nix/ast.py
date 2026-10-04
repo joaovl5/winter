@@ -69,6 +69,12 @@ class AST:
         base: AST.Type
         path: list[AST.Type]
 
+    @def_strict
+    class IF(_Base):
+        condition: AST.Type
+        case_true: AST.Type
+        case_false: AST.Type
+
     type Type = (
         NULL
         | BOOL
@@ -83,6 +89,7 @@ class AST:
         | LET
         | APPLY
         | SELECTION
+        | IF
     )
 
 

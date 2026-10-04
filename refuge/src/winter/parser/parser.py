@@ -9,6 +9,7 @@ from winter.utils.voyager import Voyager
 from .ast import AST
 from .parser_binds import BindsParser
 from .parser_collections import CollectionParser
+from .parser_conds import CondParser
 from .parser_func import FuncParser
 from .parser_paren import ParenParser
 from .parser_ref import RefParser
@@ -27,6 +28,7 @@ class Parser(Voyager[Lexeme.Type, AST.Type, ParserError]):
     _scalar: ScalarParser = Factory(ScalarParser, takes_self=True)
     _paren: ParenParser = Factory(ParenParser, takes_self=True)
     _col: CollectionParser = Factory(CollectionParser, takes_self=True)
+    _cond: CondParser = Factory(CondParser, takes_self=True)
 
     type _Res[X] = Parser.Result[X]
     type _ASTRes = _Res[AST.Type | None]

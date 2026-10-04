@@ -129,10 +129,29 @@ class Compiler(Voyager[AST.Type, nix.AST.Type, CompilerError]):
                 if nix_body is None:
                     return None, errors
                 return nix.AST.LET(entries=entries, body=nix_body), []
-            case AST.LOCALS() | AST.INHERITS():
-                return self._todo()
             case AST.FUNCTION():
                 return self._parse_fn(x)
+            case AST.IF(
+                condition=condition,
+                case_true=case_true,
+                case_false=case_false,
+            ):
+                nix_cond, errors = self._parse_one_ast(condition)
+                if nix_cond is None:
+                    return None, errors
+                nix_case_true, errors = self._parse_one_ast(case_true)
+                if nix_case_true is None:
+                    return None, errors
+                nix_case_false, errors = self._parse_one_ast(case_false)
+                if nix_case_false is None:
+                    return None, errors
+                return nix.AST.IF(
+                    condition=nix_cond,
+                    case_true=nix_case_true,
+                    case_false=nix_case_false,
+                ), []
+            case AST.LOCALS() | AST.INHERITS():
+                return self._todo()
 
             case _:
                 return self._todo()

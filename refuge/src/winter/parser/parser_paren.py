@@ -104,6 +104,8 @@ class ParenParser:
                 return self.p._binds.parse_lone_inherit()
             case "fn":
                 return self.p._func.parse_fn()
+            case "if":
+                return self.p._cond.parse_cond()
             case "type":
                 return self.p._todo()
             case "enum":
