@@ -1,9 +1,9 @@
 from typing import override
 
-from attrs import evolve, field
+from attrs import define, evolve, field
 
 from winter.parser.ast import AST
-from winter.utils.ast_utils import walk_ast
+from winter.utils.ast_utils import WalkUpdate, walk_ast
 
 from .base import BaseRule, RuleError
 
@@ -38,18 +38,24 @@ def set_ast_items(ast: AST.Type, items: list[AST.Type]) -> AST.Type:
             raise RuntimeError("Cannot set items here")
 
 
+@define
 class LocalsRule(BaseRule[LocalsRuleError]):
     error_t: type[LocalsRuleError] = field(default=LocalsRuleError, init=False)
 
     type _Res[X] = LocalsRule.Result[X]
 
     @override
-    def run[T: AST.Type](self, ast: T) -> _Res[T | None]:
-
-        # if its a container having a locals, update the container
-        # if a nested node is a container, update as such
-        for node in walk_ast(ast):
-            pass
+    def run(self, ast: AST.Type) -> _Res[AST.Type | None]:
+        try:
+            node = walk_ast(
+                ast=ast,
+                cb=lambda x: WalkUpdate(
+                    updated_node=self._raise_if_err(self._run_single(x))
+                ),
+            )
+        except LocalsRuleError as err:
+            return None, err
+        return node, None
 
     def _run_single(self, ast: AST.Type) -> _Res[AST.Type | None]:
 

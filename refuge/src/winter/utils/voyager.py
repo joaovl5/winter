@@ -50,6 +50,17 @@ class Voyager[In, Target, Err: Exception](ABC):
             errors.extend(x_errs)
         return out, errors
 
+    # parses and fails early in case of error
+    def parse_lazy_strict(self) -> Generator[Target]:
+        for x, x_errors in self.parse():
+            if x is not None:
+                yield x
+            if x_errors:
+                raise ExceptionGroup(
+                    "Errors found!",
+                    x_errors,
+                )
+
     # continuosly yields Ts and Es
     # sends a 'None' value only at the end
     def parse(

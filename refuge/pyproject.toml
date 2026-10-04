@@ -13,10 +13,10 @@
     "loguru>=0.7.3",
     "more-itertools>=11.1.0",
     "rich>=15.0.0",
-]
+  ]
 
   [project.scripts]
-    winter = "winter:main"
+    winter = "winter.cli:app"
 
 [build-system]
   requires      = ["uv_build>=0.12.3,<0.13.0"]

@@ -1,0 +1,8 @@
+[(let [a 5 b 6]
+  (fn [x y z]
+    (locals
+      my_val 10)
+    (+ x y a my_val)))
+  (fn {pkgs ...}
+    [(inherit pkgs (foo bar baz))])
+ ]

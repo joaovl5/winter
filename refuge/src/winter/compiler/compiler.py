@@ -1,10 +1,13 @@
 from collections.abc import Sequence
-from typing import override
+from typing import Any, override
 
-from attrs import define, field
+from attrs import Factory, define, field
 from loguru import logger
 
 from winter import nix
+from winter.compiler.rules.base import BaseRule
+from winter.compiler.rules.list_inherits import ListInheritsRule
+from winter.compiler.rules.locals import LocalsRule
 from winter.parser.ast import (
     AST,
     CallableHead,
@@ -27,11 +30,20 @@ EXPECTED_ONE_NODE = "Expected a single node within the parsed string interp"
 EXPECTED_NON_EMPTY_SEL = (
     "Expected at least two nodes within a selection (head and tail)"
 )
+UNEXPECTED_NONE_OPTIM = "Unexpected `None` after AST optimization"
+
+
+def _mk_rules() -> list[BaseRule[Any]]:
+    return [
+        LocalsRule(),
+        ListInheritsRule(),
+    ]
 
 
 @define
 class Compiler(Voyager[AST.Type, nix.AST.Type, CompilerError]):
     error_t: type[CompilerError] = field(default=CompilerError, init=False)
+    rules: list[BaseRule[Any]] = field(default=Factory(_mk_rules), init=False)
 
     type _Res[X] = Compiler.Result[X]
     type _NixRes = _Res[nix.AST.Type | None]
@@ -40,11 +52,26 @@ class Compiler(Voyager[AST.Type, nix.AST.Type, CompilerError]):
     def _parse_one(self) -> _NixRes:
         if (x := self._next()) is None:
             return None, []
+        # optimization just-in-time, for the moment, is good enough
+        x, err = self._optimize_ast(x)
+        if err:
+            return None, err
+        if x is None:
+            return None, self._single_err(UNEXPECTED_NONE_OPTIM)
         return self._parse_one_ast(x)
 
     # compiler optimizations and source pre-processing
     def _optimize_ast(self, x: AST.Type) -> _Res[AST.Type | None]:
-        pass
+        for rule in self.rules:
+            out, err = rule.run(x)
+            if err:
+                msg = f"Error during rule '{rule!r}': {err!r}"
+                return None, self._single_err(msg)
+            if out is None:
+                msg = f"Rule '{rule!r}' didn't return an AST!"
+                return None, self._single_err(msg)
+            x = out
+        return x, []
 
     def _parse_one_ast(self, x: AST.Type) -> _NixRes:
         match x:
