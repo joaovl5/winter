@@ -35,7 +35,27 @@ OPERATOR_MAPPING: dict[_Op, str | OpSpecialCase] = {
     _Op.RPIPE: "|>",
 }
 
-UNARY_OPERATORS: set[_Op] = {
-    _Op.SUB,
-    _Op.NOT,
-}
+UNARY_OPERATORS: frozenset[_Op] = frozenset(
+    {
+        _Op.SUB,
+        _Op.NOT,
+    }
+)
+
+BINARY_BLOCKED_OPERATORS: frozenset[_Op] = frozenset(
+    {
+        _Op.NOT,
+    }
+)
+
+N_ARY_BLOCKED_OPERATORS: frozenset[_Op] = frozenset(
+    {
+        _Op.EQ,
+        _Op.NEQ,
+        _Op.NOT,
+        _Op.GT,
+        _Op.LT,
+        _Op.GTE,
+        _Op.LTE,
+    }
+)

@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 from attrs import define
 
-from winter.parser.ast import AST
+from winter.parser.ast import AST, Context
 
 
 class RuleError(BaseException): ...
@@ -14,10 +14,14 @@ class BaseRule[Err: RuleError](ABC):
 
     error_t: type[Err]
 
-    type Result[X] = tuple[X, Err | None]
+    type Result[X] = tuple[X | None, Err | None]
 
     @abstractmethod
-    def run[T: AST.Type](self, ast: T) -> Result[T | None]:
+    def run_context(self, ctx: Context) -> Result[Context]:
+        """Like `.run` but module-level."""
+
+    @abstractmethod
+    def run[T: AST.Type](self, ast: T) -> Result[T]:
         """Execute the rule on an AST node.
 
         Returns tuple with a possibly modified or null AST node, and a potential error.

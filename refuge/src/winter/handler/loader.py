@@ -66,6 +66,7 @@ class SourceHandler:
             input_ctx = compiler._input_tree[ctx_key]
             save_path = self._get_out_counterpart(input_ctx.file)
             rendered_nix = self._render_nix(nix_ast)
+            save_path.parent.mkdir(exist_ok=True, parents=True)
             _ = save_path.write_text(rendered_nix)
         logger.debug(
             "Compilation successful, written to {} output files",
@@ -100,11 +101,18 @@ class SourceHandler:
     def _render_nix(self, data: nix.AST.Type) -> str:
         out = nix.render_nix_ast(data)
         if self.format_nix:
-            out = subprocess.run(
+            res = subprocess.run(
                 ("alejandra", "-"),
                 input=out,
                 encoding="utf-8",
                 check=False,
                 capture_output=True,
-            ).stdout
+            )
+            if res.returncode != 0:
+                msg = (
+                    "formatter `alejandra` raised an error, AST is likely invalid! "
+                    f"process stderr: {res.stderr}"
+                )
+                raise WinterError(msg)
+            out = res.stdout
         return out

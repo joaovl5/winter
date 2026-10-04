@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from attrs import Factory, define, evolve, field
+from attrs import Factory, define, field
 from loguru import logger
 
 from winter import nix
@@ -22,7 +22,13 @@ from winter.parser.ast import (
     UnwrappedParam,
 )
 
-from .types import OPERATOR_MAPPING, UNARY_OPERATORS, OpSpecialCase
+from .types import (
+    BINARY_BLOCKED_OPERATORS,
+    N_ARY_BLOCKED_OPERATORS,
+    OPERATOR_MAPPING,
+    UNARY_OPERATORS,
+    OpSpecialCase,
+)
 
 
 @define
@@ -40,8 +46,8 @@ SKIPPING_CONTEXT = "Skipping Context `{}` since no Nix root AST was compiled."
 
 def _mk_rules() -> list[BaseRule[Any]]:
     return [
-        LocalsRule(),
         ListInheritsRule(),
+        LocalsRule(),
     ]
 
 
@@ -113,16 +119,18 @@ class Compiler:
 
         return out, None
 
+    # compiler optimizations, source pre-processing, and other things
     def _optimize_context(self, ctx: Context) -> _Res[Context]:
-        out_body: list[AST.Type] = []
-
-        for node in ctx.body:
-            out_node, err = self._optimize_ast(node)
-            if out_node is None or err:
-                return self._error("Error during `_optimize_ast` call", err)
-            assert out_node
-            out_body.append(out_node)
-        return evolve(ctx, body=out_body), None
+        for rule in self.rules:
+            out, err = rule.run_context(ctx)
+            if err:
+                msg = f"Error during rule '{rule!r}': {err!r}"
+                return self._error(msg)
+            if out is None:
+                msg = f"Rule '{rule!r}' didn't return an AST!"
+                return self._error(msg)
+            ctx = out
+        return ctx, None
 
     def _error(
         self,
@@ -133,19 +141,6 @@ class Compiler:
             msg=msg,
             wrapped_errors=[x for x in other_errors if x],
         )
-
-    # compiler optimizations and source pre-processing
-    def _optimize_ast(self, x: AST.Type) -> _Res[AST.Type]:
-        for rule in self.rules:
-            out, err = rule.run(x)
-            if err:
-                msg = f"Error during rule '{rule!r}': {err!r}"
-                return self._error(msg)
-            if out is None:
-                msg = f"Rule '{rule!r}' didn't return an AST!"
-                return self._error(msg)
-            x = out
-        return x, None
 
     def _parse_one_ast(self, x: AST.Type) -> _NixRes:
         match x:
@@ -333,6 +328,7 @@ class Compiler:
         unary_ok: bool = True,
     ) -> _NixRes:
         sym = OPERATOR_MAPPING[op]
+        sym_repr = f"`{op!r} - {sym}`"
         if isinstance(sym, OpSpecialCase):
             return self._todo()
         match nix_tail:
@@ -342,25 +338,29 @@ class Compiler:
                 if not unary_ok:
                     raise RuntimeError("unary is not ok in this situation")
                 if op not in UNARY_OPERATORS:
-                    msg = f"Operator `{sym}` cannot be unary!"
+                    msg = f"Operator {sym_repr} cannot be unary!"
                     return self._error(msg)
                 return nix.AST.UNARY_OP(
                     value=unary_val,
                     op=sym,
                 ), None
             case [lhs, rhs]:
+                if op in BINARY_BLOCKED_OPERATORS:
+                    msg = f"Operator {sym_repr} cannot be binary!"
+                    return self._error(msg)
                 return nix.AST.BINARY_OP(lhs=lhs, rhs=rhs, op=sym), None
-            case [lhs, *tail]:
-                rhs, errors = self._parse_callable_op(op=op, nix_tail=tail)
-                if rhs is None:
-                    return None, errors
-                return nix.AST.BINARY_OP(
-                    lhs=lhs,
-                    rhs=rhs,
-                    op=sym,
-                ), None
-            case _:
-                raise RuntimeError("Unexpected callable case")
+            case items:
+                if op in N_ARY_BLOCKED_OPERATORS:
+                    msg = (
+                        f"Operator {sym_repr} cannot be n-ary! "
+                        "Nix rejects this sort of behavior and workarounds can have "
+                        " varying side-effects, thus we choose to avoid them by "
+                        "explicitly using parenthesis to separate arguments. If your"
+                        " workflow/use-case requires/would-benefit from this, please"
+                        " contact Winter's development so we can hear more about it."
+                    )
+                    return self._error(msg)
+                return nix.AST.N_ARY_OP(items=items, op=sym), None
 
     def _parse_bindings(
         self, binds: Sequence[AST.MAP.MapBind | InheritNode | OneBind]

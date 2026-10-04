@@ -201,7 +201,6 @@ class Lexer(Voyager[str, Lexeme.Type, LexerError]):
                     break
                 if ch_next == "}":
                     current_value.append("}")
-                    _ = self._next()
                     continue
                 all_errors.push("Unexpected '}' in interpolated string")
                 break

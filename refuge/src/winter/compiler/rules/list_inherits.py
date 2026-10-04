@@ -3,8 +3,8 @@ from typing import override
 from attrs import define, evolve, field
 from loguru import logger
 
-from winter.parser.ast import AST
-from winter.utils.ast_utils import WalkUpdate, walk_ast
+from winter.parser.ast import AST, Context
+from winter.utils.ast_utils import WalkUpdate, walk_ast, walk_context
 
 from .base import BaseRule, RuleError
 
@@ -29,12 +29,26 @@ class ListInheritsRule(BaseRule[ListInheritsRuleError]):
     type _Res[X] = ListInheritsRule.Result[X]
 
     @override
-    def run(self, ast: AST.Type) -> _Res[AST.Type | None]:
+    def run_context(self, ctx: Context) -> _Res[Context]:
+        try:
+            ctx = walk_context(
+                ctx=ctx,
+                ctx_cb=lambda x: WalkUpdate(updated_t=x),
+                ast_cb=lambda x: WalkUpdate(
+                    updated_t=self._raise_if_err(self._run_single(x))
+                ),
+            )
+        except ListInheritsRuleError as err:
+            return None, err
+        return ctx, None
+
+    @override
+    def run(self, ast: AST.Type) -> _Res[AST.Type]:
         try:
             node = walk_ast(
                 ast=ast,
                 cb=lambda x: WalkUpdate(
-                    updated_node=self._raise_if_err(self._run_single(x))
+                    updated_t=self._raise_if_err(self._run_single(x))
                 ),
             )
         except ListInheritsRuleError as err:

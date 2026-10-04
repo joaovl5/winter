@@ -191,8 +191,8 @@ based on the scope:
 - bindings from a `(locals)` call must precede all of its consumers
 - consumers must be in the same scope, or a nested scope as the `(locals)`
   call
-- a `let` will be generated, based on these rules, to accomodate the
-  outer-most consumer.
+- a `let` will be generated, based on these rules, for encompassing
+  the siblings which the `locals` call precedes.
 
 ##### Examples
 
@@ -230,31 +230,6 @@ in {
   custom-option.data = custom-data;
   environment.systemPackages = [pkgs.btop];
 }
-```
-
-```clojure
-(fn mk-module [module-name module-opts module-cfg]
-  (locals
-    module-extra-opts (// module-opts {enable (make-enable-option true)}))
-  (fn {config ...}
-    (locals
-      module-extra-cfg (// module-cfg {blabla 2}))
-    {options module-extra-opts
-     config module-extra-cfg}))
-```
-
-Becomes:
-
-```nix
-module-name: module-opts: module-cfg: # mk-module
-  {config, ...}: let
-  # let only generated here, due to only consumers being here
-  module-extra-opts = module-opts // {enable = make-enable-option true;};
-  module-extra-cfg = module-cfg // {blabla = 2;};
-  in {
-    options = module-extra-opts;
-    config = module-extra-cfg;
-  }
 ```
 
 ### Inherit

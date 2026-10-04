@@ -17,6 +17,8 @@ def render_nix_ast(node: AST.Type) -> str:
             return _attrset(node)
         case AST.LET():
             return _let(node)
+        case AST.N_ARY_OP(items=items, op=op):
+            return f" {op} ".join(_render_as_arg(x) for x in items)
         case AST.BINARY_OP(lhs=lhs, rhs=rhs, op=op):
             lhs = _render_as_arg(lhs)
             rhs = _render_as_arg(rhs)
@@ -91,7 +93,11 @@ def _render_bindings(entries: list[Binding.Type]) -> str:
 def _render_binding(entry: Binding.Type) -> str:
     match entry:
         case (str(inherit_ns), inherit_items):
-            return "inherit " + f"({inherit_ns}) " + " ".join(inherit_items or [])
+            if inherit_items is not None:
+                items = " ".join(inherit_items)
+                return f"inherit ({inherit_ns}) {items};"
+            else:
+                return f"inherit {inherit_ns}; "
         case (list(dot_path), bound_value):
             dot_path_str = _dot_path(dot_path)
             return f"{dot_path_str} = {render_nix_ast(bound_value)};"
@@ -120,11 +126,7 @@ def _list(node: AST.LIST) -> str:
 
 def _render_as_arg(node: AST.Type) -> str:
     x = render_nix_ast(node)
-    match node:
-        case AST.LAMBDA() | AST.APPLY() | AST.BINARY_OP() | AST.UNARY_OP() | AST.LET():
-            return f"({x})"
-        case _:
-            return x
+    return f"({x})"
 
 
 def _str_like(node: AST.STRING_LIKE) -> str:
@@ -158,3 +160,4 @@ def _escape_str(x: str) -> str:
     out = x
     for before, after in _ESCAPE_LITERALS:
         out = out.replace(before, after)
+    return out

@@ -1,26 +1,22 @@
-from collections.abc import Callable, Generator, Iterable
+from collections.abc import Callable
 
 from attrs import define, evolve
 
-from winter.parser.ast import AST, CallableHead, FuncParam, StringLikeAST
-
-
-def _walk_asts(asts: Iterable[AST.Type]) -> Generator[AST.Type]:
-    yield from (x for ast in asts for x in walk_ast(ast, cb))
+from winter.parser.ast import AST, CallableHead, Context, FuncParam, StringLikeAST
 
 
 @define
-class WalkUpdate:
-    updated_node: AST.Type
+class WalkUpdate[T]:
+    updated_t: T
 
 
-type _Callback = Callable[[AST.Type], WalkUpdate]
+type _Callback[T] = Callable[[T], WalkUpdate[T]]
 
 
 def _evolve_items(
     parent: AST.Type,
     items_key: str,
-    cb: _Callback,
+    cb: _Callback[AST.Type],
     **kwargs: object,
 ) -> AST.Type:
     items = getattr(parent, items_key)
@@ -34,7 +30,7 @@ def _evolve_items(
 
 def walk_ast[T: AST.Type](
     ast: AST.Type,
-    cb: _Callback,
+    cb: _Callback[AST.Type],
 ) -> AST.Type:
     match ast:
         case AST.STRING_LIKE(parts=parts):
@@ -84,6 +80,17 @@ def walk_ast[T: AST.Type](
                 for param in params
             ]
             ast = _evolve_items(ast, "body", cb, params=out_params)
+        case AST.IF(
+            condition=condition,
+            case_true=case_true,
+            case_false=case_false,
+        ):
+            ast = evolve(
+                ast,
+                condition=walk_ast(condition, cb),
+                case_true=walk_ast(case_true, cb),
+                case_false=walk_ast(case_false, cb),
+            )
         case (
             AST.NIL()
             | AST.BOOL()
@@ -95,4 +102,15 @@ def walk_ast[T: AST.Type](
             pass
 
     update = cb(ast)
-    return update.updated_node
+    return update.updated_t
+
+
+def walk_context(
+    ctx: Context,
+    ctx_cb: _Callback[Context],
+    ast_cb: _Callback[AST.Type],
+) -> Context:
+    out_items = [walk_ast(i, ast_cb) for i in ctx.body]
+    ctx = evolve(ctx, body=out_items)
+    ctx_update = ctx_cb(ctx)
+    return ctx_update.updated_t

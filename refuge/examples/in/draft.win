@@ -1,5 +1,10 @@
+(locals
+  my_vale 41)
+
 [(let [a 5
-       b 6]
+       b 6
+       x $"Bla bla {(+ 1 1)} "
+       y $"{{hey}}"]
   (fn [x
        y
        z]
@@ -11,7 +16,7 @@
        (if (not= false false)
         15
         20)))
-    (+ x y a my_val)))
+    (+ x y a my_val my_vale)))
  (fn {pkgs ...}
    [(inherit pkgs (foo bar baz))])]
 

@@ -39,6 +39,11 @@ class AST:
         entries: list[Binding.Type]
 
     @def_strict
+    class N_ARY_OP(_Base):
+        items: list[AST.Type]
+        op: str
+
+    @def_strict
     class BINARY_OP(_Base):
         lhs: AST.Type
         rhs: AST.Type
@@ -83,6 +88,7 @@ class AST:
         | STRING_LIKE
         | LIST
         | ATTRSET
+        | N_ARY_OP
         | BINARY_OP
         | UNARY_OP
         | LAMBDA
