@@ -1,12 +1,12 @@
-from typing import TYPE_CHECKING
+lazy from typing import TYPE_CHECKING
 
-from attrs import define
+lazy from attrs import define
 
-from winter.lexer.lexemes import Lexeme
-from winter.parser.ast import AST, CallableHead
+lazy from winter.lexer.lexemes import Lexeme
+lazy from winter.parser.ast import AST, CallableHead
 
 if TYPE_CHECKING:
-    from .parser import Parser
+    lazy from .parser import Parser
 
 
 EXPECTED_TOKEN = "Expected a token"
@@ -14,7 +14,7 @@ EXPECTED_PAREN = "Expected opening parenthesis"
 UNTERMINATED_BLOCK = "Unterminated block"
 
 
-@define
+@define(slots=True)
 class ParenParser:
     p: Parser
     type _Res[X] = Parser._Res[X]

@@ -1,6 +1,6 @@
-from enum import StrEnum
+lazy from enum import StrEnum
 
-from winter.parser.ast import CallableHead
+lazy from winter.parser.ast import CallableHead
 
 _Op = CallableHead.OPERATOR
 

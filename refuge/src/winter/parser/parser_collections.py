@@ -1,12 +1,12 @@
-from typing import TYPE_CHECKING
+lazy from typing import TYPE_CHECKING
 
-from attrs import define
+lazy from attrs import define
 
-from winter.lexer.lexemes import Lexeme
-from winter.parser.ast import AST, ManyInherits
+lazy from winter.lexer.lexemes import Lexeme
+lazy from winter.parser.ast import AST, ManyInherits
 
 if TYPE_CHECKING:
-    from .parser import Parser
+    lazy from .parser import Parser
 
 
 EXPECTED_BRACKET = "Expected opening bracket"
@@ -16,7 +16,7 @@ UNTERMINATED_MAP = "Unterminated map"
 EXCLAM_SYNTAX_TODO = "The `!` syntax for map keys wasn't yet implemented"
 
 
-@define
+@define(slots=True)
 class CollectionParser:
     p: Parser
     type _Res[X] = Parser._Res[X]

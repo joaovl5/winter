@@ -1,26 +1,26 @@
-from typing import override
+lazy from typing import override
 
-from attrs import Factory, define, field
-from loguru import logger
+lazy from attrs import Factory, define, field
+lazy from loguru import logger
 
-from winter.lexer.lexemes import Lexeme
-from winter.utils.voyager import Voyager, VoyagerError
+lazy from winter.lexer.lexemes import Lexeme
+lazy from winter.utils.voyager import Voyager, VoyagerError
 
-from .ast import AST
-from .parser_binds import BindsParser
-from .parser_collections import CollectionParser
-from .parser_conds import CondParser
-from .parser_func import FuncParser
-from .parser_paren import ParenParser
-from .parser_ref import RefParser
-from .parser_scalar import ScalarParser
+lazy from .ast import AST
+lazy from .parser_binds import BindsParser
+lazy from .parser_collections import CollectionParser
+lazy from .parser_conds import CondParser
+lazy from .parser_func import FuncParser
+lazy from .parser_paren import ParenParser
+lazy from .parser_ref import RefParser
+lazy from .parser_scalar import ScalarParser
 
 
-@define
+@define(slots=True, frozen=True)
 class ParserError(VoyagerError): ...
 
 
-@define
+@define(slots=True)
 class Parser(Voyager[Lexeme.Type, AST.Type, ParserError]):
     error_t: type[ParserError] = field(default=ParserError, init=False)
     _binds: BindsParser = Factory(BindsParser, takes_self=True)
@@ -57,7 +57,7 @@ class Parser(Voyager[Lexeme.Type, AST.Type, ParserError]):
             if pos > 0:
                 return self._resolve_some_pos(pos - 1)
             else:
-                logger.warning("Had to fallback to (0, 0)")
+                logger.warning("Had to fallback to (0, 0) - this may be a bug!")
                 return 0, 0
         return tk.pos_start, tk.pos_end
 

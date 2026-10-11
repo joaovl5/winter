@@ -1,6 +1,6 @@
-from typing import Protocol, Self
+lazy from typing import Protocol, Self
 
-from attrs import define
+lazy from attrs import define
 
 
 class ErrorFactoryFn[T](Protocol):

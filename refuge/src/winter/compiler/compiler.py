@@ -1,15 +1,15 @@
-from collections.abc import Sequence
-from pathlib import Path
-from typing import Any
+lazy from collections.abc import Sequence
+lazy from pathlib import Path
+lazy from typing import Any
 
-from attrs import Factory, define, field
-from loguru import logger
+lazy from attrs import Factory, define, field
+lazy from loguru import logger
 
-from winter import nix
-from winter.compiler.rules.base import BaseRule
-from winter.compiler.rules.list_inherits import ListInheritsRule
-from winter.compiler.rules.locals import LocalsRule
-from winter.parser.ast import (
+lazy from winter import nix
+lazy from winter.compiler.rules.base import BaseRule
+lazy from winter.compiler.rules.list_inherits import ListInheritsRule
+lazy from winter.compiler.rules.locals import LocalsRule
+lazy from winter.parser.ast import (
     AST,
     CallableHead,
     Context,
@@ -22,7 +22,7 @@ from winter.parser.ast import (
     UnwrappedParam,
 )
 
-from .types import (
+lazy from .types import (
     BINARY_BLOCKED_OPERATORS,
     N_ARY_BLOCKED_OPERATORS,
     OPERATOR_MAPPING,

@@ -1,4 +1,4 @@
-from .ast import AST, Binding, LambdaArg, StringLikePart
+lazy from .ast import AST, Binding, LambdaArg, StringLikePart
 
 
 def render_nix_ast(node: AST.Type) -> str:

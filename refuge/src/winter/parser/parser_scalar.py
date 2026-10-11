@@ -1,18 +1,18 @@
-from typing import TYPE_CHECKING
+lazy from typing import TYPE_CHECKING
 
-from attrs import define
+lazy from attrs import define
 
-from winter.lexer.lexemes import Lexeme, StringLikeLex
+lazy from winter.lexer.lexemes import Lexeme, StringLikeLex
 
-from .ast import AST, StringLikeAST
+lazy from .ast import AST, StringLikeAST
 
 if TYPE_CHECKING:
-    from .parser import Parser
+    lazy from .parser import Parser
 
 UNEXPECTED_TOKEN = "Unexpected token"
 
 
-@define
+@define(slots=True)
 class ScalarParser:
     p: Parser
     type _Res[X] = Parser._Res[X]

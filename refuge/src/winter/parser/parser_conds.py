@@ -1,20 +1,20 @@
-from typing import TYPE_CHECKING
+lazy from typing import TYPE_CHECKING
 
-from attrs import define
+lazy from attrs import define
 
-from winter.lexer.lexemes import Lexeme
+lazy from winter.lexer.lexemes import Lexeme
 
-from .ast import AST
+lazy from .ast import AST
 
 if TYPE_CHECKING:
-    from .parser import Parser
+    lazy from .parser import Parser
 
 UNTERMINATED_IF = "Unterminated `if`"
 EXPECTED_CASE_FALSE = "Expected `if` to have both 'true' then 'false' case handling"
 EXPECTED_RPAREN = "Expected a closing parenthesis after both `if` cases"
 
 
-@define
+@define(slots=True)
 class CondParser:
     p: Parser
     type _Res[X] = Parser._Res[X]

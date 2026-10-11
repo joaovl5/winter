@@ -1,5 +1,5 @@
-from .ast import AST, Binding, LambdaArg, StringLikePart
-from .render import render_nix_ast
+lazy from .ast import AST, Binding, LambdaArg, StringLikePart
+lazy from .render import render_nix_ast
 
 __all__ = (
     "AST",

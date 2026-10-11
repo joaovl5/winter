@@ -1,4 +1,4 @@
-from . import compiler, lexer, nix, parser
+lazy from . import compiler, lexer, nix, parser
 
 __all__ = (
     "compiler",

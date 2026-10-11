@@ -1,5 +1,5 @@
-from collections.abc import Generator
-from pathlib import Path
+lazy from collections.abc import Generator
+lazy from pathlib import Path
 
 
 def read_iter(

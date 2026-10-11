@@ -1,6 +1,6 @@
-from typing import ClassVar, dataclass_transform, override
+lazy from typing import ClassVar, dataclass_transform, override
 
-from attrs import define, field
+lazy from attrs import define, field
 
 
 # wrapper so pyright behaves
@@ -9,10 +9,14 @@ from attrs import define, field
     eq_default=True,
     order_default=False,
     kw_only_default=False,
-    frozen_default=False,
+    frozen_default=True,
 )
 def def_sym[T](cls: type[T]) -> type[T]:
-    return define(repr=False)(cls)
+    return define(
+        repr=False,
+        frozen=True,
+        eq=True,
+    )(cls)
 
 
 # another wrapper so pyright behaves
@@ -28,6 +32,8 @@ def def_strict[T](cls: type[T]) -> type[T]:
         repr=False,
         kw_only=True,
         frozen=True,
+        slots=True,
+        eq=True,
     )(cls)
 
 

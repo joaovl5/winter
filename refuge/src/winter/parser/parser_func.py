@@ -1,13 +1,13 @@
-from collections.abc import Sequence
-from typing import TYPE_CHECKING
+lazy from collections.abc import Sequence
+lazy from typing import TYPE_CHECKING
 
-from attrs import define
+lazy from attrs import define
 
-from winter.lexer.lexemes import Lexeme
-from winter.parser.ast import AST, FuncParam, TypedReference, UnwrappedParam
+lazy from winter.lexer.lexemes import Lexeme
+lazy from winter.parser.ast import AST, FuncParam, TypedReference, UnwrappedParam
 
 if TYPE_CHECKING:
-    from .parser import Parser
+    lazy from .parser import Parser
 
 UNTERMINATED_FN = "Unterminated function definition"
 UNTERMINATED_FN_PARAMS = "Unterminated function params"
@@ -21,7 +21,7 @@ EMPTY_BODY = "Function body must not be empty"
 EMPTY_PARAMS = "Function must have at least one param"
 
 
-@define
+@define(slots=True)
 class FuncParser:
     p: Parser
     type _Res[X] = Parser._Res[X]

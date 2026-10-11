@@ -1,17 +1,17 @@
-import subprocess
-from collections.abc import Generator, Iterator
-from pathlib import Path
+lazy import subprocess
+lazy from collections.abc import Generator, Iterator
+lazy from pathlib import Path
 
-from attrs import define
-from loguru import logger
+lazy from attrs import define
+lazy from loguru import logger
 
-from winter import nix
-from winter.compiler.compiler import Compiler
-from winter.lexer.lexemes import Lexeme
-from winter.lexer.lexer import Lexer
-from winter.parser.ast import AST, Context, Project
-from winter.parser.parser import Parser
-from winter.utils.io import read_iter
+lazy from winter import nix
+lazy from winter.compiler.compiler import Compiler
+lazy from winter.lexer.lexemes import Lexeme
+lazy from winter.lexer.lexer import Lexer
+lazy from winter.parser.ast import AST, Context, Project
+lazy from winter.parser.parser import Parser
+lazy from winter.utils.io import read_iter
 
 
 class WinterError(BaseException): ...
@@ -46,17 +46,9 @@ class SourceHandler:
             # we can try doing a lazy-parse thing later (parse on demand, just-in-time)
             # but for now this eager approach is good enough
             file_ast = self._handle_file(source_file)
-            file_ctx = Context(
-                file=source_file,
-                name=source_file.name,
-                body=file_ast,
-            )
+            file_ctx = Context(file=source_file, body=file_ast)
             contexts.append(file_ctx)
-        project = Project(
-            dir=self.input_dir,
-            name=self.input_dir.name,
-            contexts=contexts,
-        )
+        project = Project(dir=self.input_dir, contexts=contexts)
         logger.debug("Starting compilation of {} contexts", len(contexts))
         compiler = self._mk_compiler(project)
         out, err = compiler.compile()

@@ -1,20 +1,20 @@
-from collections.abc import Iterator
-from pathlib import Path
-from typing import cast
+lazy from collections.abc import Iterator
+lazy from pathlib import Path
+lazy from typing import cast
 
-from attrs import define
-from loguru import logger
-from lsprotocol import types
-from more_itertools import collapse
-from pygls.lsp.server import LanguageServer
-from pygls.workspace import TextDocument
+lazy from attrs import define
+lazy from loguru import logger
+lazy from lsprotocol import types
+lazy from more_itertools import collapse
+lazy from pygls.lsp.server import LanguageServer
+lazy from pygls.workspace import TextDocument
 
-from winter.compiler.compiler import Compiler
-from winter.lexer.lexer import Lexer
-from winter.parser.ast import Context, Project
-from winter.parser.parser import Parser
-from winter.utils.ast_utils import convert_position
-from winter.utils.voyager import VoyagerError
+lazy from winter.compiler.compiler import Compiler
+lazy from winter.lexer.lexer import Lexer
+lazy from winter.parser.ast import Context, Project
+lazy from winter.parser.parser import Parser
+lazy from winter.utils.ast_utils import convert_position
+lazy from winter.utils.voyager import VoyagerError
 
 LANGSERVER_VERSION = "v1"
 
@@ -41,8 +41,8 @@ class WinterLanguageServer(LanguageServer):
         try:
             lex = Lexer(iter(document.source)).parse_lazy_strict()
             ast = list(Parser(lex).parse_lazy_strict())
-            context = Context(file=Path(), name=None, body=ast)
-            project = Project(dir=Path(), name=None, contexts=[context])
+            context = Context(file=Path(), body=ast)
+            project = Project(dir=Path(), contexts=[context])
             out, err = Compiler(project=project).compile()
             if out is None or err:
                 raise err or RuntimeError

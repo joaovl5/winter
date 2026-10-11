@@ -1,4 +1,4 @@
-from typing import override
+lazy from typing import override
 
 from winter.utils.types import Symbol, def_sym
 
@@ -127,7 +127,7 @@ class StringLikeLex:
 
         @override
         def __repr__(self) -> str:
-            out = " | ".join(x._repr() or x._SYMBOL or "_" for x in self.value)  # pyright: ignore[reportPrivateUsage]
+            out = " | ".join(x._repr() or x._SYMBOL or "_" for x in self.value)
             return f"«{out}»"
 
     type Type = TEXT | EXPR

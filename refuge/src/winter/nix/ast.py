@@ -1,6 +1,6 @@
-import rich.repr as r
+lazy import rich.repr as r
 
-from winter.utils.types import def_strict
+lazy from winter.utils.types import def_strict
 
 # this file is just for nix's ast, no winter shenanigans
 

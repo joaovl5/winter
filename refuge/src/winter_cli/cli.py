@@ -1,14 +1,14 @@
-import sys
-from pathlib import Path
-from typing import Annotated, Literal
+lazy import sys
+lazy from pathlib import Path
+lazy from typing import Annotated, Literal
 
-from cyclopts import App, Parameter
-from cyclopts import validators as v
-from loguru import logger
+lazy from cyclopts import App, Parameter
+lazy from cyclopts import validators as v
+lazy from loguru import logger
 
-from winter.handler.loader import SourceHandler, WinterError
-from winter.utils.logging import configure_logging
-from winter_ls.server import get_server
+lazy from winter.handler.loader import SourceHandler, WinterError
+lazy from winter.utils.logging import configure_logging
+lazy from winter_ls.server import get_server
 
 configure_logging()
 

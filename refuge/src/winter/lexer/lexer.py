@@ -1,15 +1,15 @@
-from collections.abc import Generator
-from typing import override
+lazy from collections.abc import Generator
+lazy from typing import override
 
-from attrs import define, field
-from more_itertools import loops
+lazy from attrs import define, field
+lazy from more_itertools import loops
 
-from winter.utils.voyager import Voyager, VoyagerError
+lazy from winter.utils.voyager import Voyager, VoyagerError
 
-from .lexemes import SINGLE_CHAR_LEXEMES, Lexeme, StringLikeLex
+lazy from .lexemes import SINGLE_CHAR_LEXEMES, Lexeme, StringLikeLex
 
 
-@define
+@define(slots=True, frozen=True)
 class LexerError(VoyagerError): ...
 
 
@@ -22,7 +22,7 @@ BACKSLASH_VALUES = {
 }
 
 
-@define
+@define(slots=True)
 class Lexer(Voyager[str, Lexeme.Type, LexerError]):
     error_t: type[LexerError] = field(default=LexerError, init=False)
     type _Res[X] = Lexer.Result[X]

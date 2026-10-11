@@ -1,8 +1,8 @@
-from collections.abc import Callable
+lazy from collections.abc import Callable
 
-from attrs import define, evolve
+lazy from attrs import define, evolve
 
-from winter.parser.ast import AST, CallableHead, Context, FuncParam, StringLikeAST
+lazy from winter.parser.ast import AST, CallableHead, Context, FuncParam, StringLikeAST
 
 
 @define

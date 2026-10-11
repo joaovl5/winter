@@ -10,8 +10,8 @@ in [
   (let
     a = 5;
     b = 6;
-    x = "Bla bla ${1 + 1} ";
-    y = "{hey}";
+    x = "Bla bla {} ";
+    y = "{{hey}}";
   in
     x: y: z: let
       my_val = 10;

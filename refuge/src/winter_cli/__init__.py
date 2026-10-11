@@ -1,3 +1,3 @@
-from .cli import app
+lazy from .cli import app
 
 __all__ = ("app",)

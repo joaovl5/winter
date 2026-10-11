@@ -1,14 +1,14 @@
-from typing import TYPE_CHECKING
+lazy from typing import TYPE_CHECKING
 
-from attrs import define
+lazy from attrs import define
 
-from winter.lexer.lexemes import Lexeme
+lazy from winter.lexer.lexemes import Lexeme
 
-from .ast import AST, TypedReference
+lazy from .ast import AST, TypedReference
 
 if TYPE_CHECKING:
-    from .ast import ManyBinds, ManyInherits, OneBind
-    from .parser import Parser, ParserError
+    lazy from .ast import ManyBinds, ManyInherits, OneBind
+    lazy from .parser import Parser, ParserError
 
 EXPECTED_REFERENCE = "Expected a reference"
 EXPECTED_REFERENCE_ATOM = "Expected an identifier atom within a reference"
@@ -25,7 +25,7 @@ UNTERMINATED_INHERIT_ITEMS = "Unterminated `inherit` bind items"
 BAD_TYPE_INHERIT_BIND = "Inherit item must only be an identifier"
 
 
-@define(frozen=True, kw_only=True)
+@define(frozen=True, kw_only=True, slots=True)
 class _BindsLikeRes:
     pos_start: int
     binds: ManyBinds
@@ -33,7 +33,7 @@ class _BindsLikeRes:
     errors: list[ParserError]
 
 
-@define
+@define(slots=True)
 class BindsParser:
     p: Parser
     type _Res[X] = Parser._Res[X]

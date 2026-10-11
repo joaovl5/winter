@@ -1,8 +1,8 @@
-import sys
+lazy import sys
 
-from loguru import logger
-from rich.console import Console
-from rich.logging import RichHandler
+lazy from loguru import logger
+lazy from rich.console import Console
+lazy from rich.logging import RichHandler
 
 cl = Console(
     tab_size=2,

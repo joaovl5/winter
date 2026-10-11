@@ -1,11 +1,12 @@
-import inspect
-from enum import Enum
-from pathlib import Path
-from typing import Self, override
+lazy import inspect
+lazy from enum import Enum
+lazy from pathlib import Path
+lazy from typing import Self, override
 
-import rich.repr as r
+lazy import rich.repr as r
+lazy from attrs import Factory
 
-from winter.utils.types import Symbol, def_strict, def_sym
+lazy from winter.utils.types import Symbol, def_strict, def_sym
 
 type OneBind = tuple[TypedReference, AST.Type]
 type ManyBinds = list[OneBind]
@@ -19,14 +20,14 @@ type ManyInherits = list[InheritNode]
 class Context:
     file: Path
     body: list[AST.Type]
-    name: str | None = None
+    name: str = Factory(lambda s: s.file.name, takes_self=True)
 
 
 @def_strict
 class Project:
     contexts: list[Context]
-    dir: Path
-    name: str | None = None
+    dir: Path = Factory(lambda: Path("."))
+    name: str = Factory(lambda s: s.dir.name, takes_self=True)
 
 
 class AST:

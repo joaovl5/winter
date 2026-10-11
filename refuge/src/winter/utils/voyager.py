@@ -1,15 +1,15 @@
-from abc import ABC, abstractmethod
-from collections.abc import Callable, Generator, Iterator, Sequence
-from functools import cached_property
-from typing import override
+lazy from abc import ABC, abstractmethod
+lazy from collections.abc import Callable, Generator, Iterator, Sequence
+lazy from functools import cached_property
+lazy from typing import override
 
-from attrs import define, field
-from more_itertools import SequenceView, loops, seekable
+lazy from attrs import define, field
+lazy from more_itertools import SequenceView, loops, seekable
 
-from winter.utils.error_box import ErrorBox
+lazy from winter.utils.error_box import ErrorBox
 
 
-@define
+@define(slots=True, frozen=True)
 class VoyagerError(Exception):
     msg: str
     pos_start: int
@@ -20,7 +20,7 @@ class VoyagerError(Exception):
         return f"@({self.pos_start}→{self.pos_end}): {self.msg}"
 
 
-@define
+@define(slots=True)
 class Voyager[In, Target, Err: VoyagerError](ABC):
     source: Iterator[In]
     error_t: type[Err]

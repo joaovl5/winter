@@ -1,13 +1,13 @@
-from typing import TYPE_CHECKING
+lazy from typing import TYPE_CHECKING
 
-from attrs import define
+lazy from attrs import define
 
-from winter.lexer.lexemes import Lexeme
+lazy from winter.lexer.lexemes import Lexeme
 
-from .ast import AST, TypedReference
+lazy from .ast import AST, TypedReference
 
 if TYPE_CHECKING:
-    from .parser import Parser
+    lazy from .parser import Parser
 
 EXPECTED_REFERENCE = "Expected a reference"
 EXPECTED_REFERENCE_ATOM = "Expected an identifier atom within a reference"
@@ -17,7 +17,7 @@ UNEXPECTED_DOTTED_PATH_TOKEN = (
 )
 
 
-@define
+@define(slots=True)
 class RefParser:
     p: Parser
     type _Res[X] = Parser._Res[X]
