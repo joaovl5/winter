@@ -4,12 +4,13 @@ from typing import override
 from attrs import define, field
 from more_itertools import loops
 
-from winter.utils.voyager import Voyager
+from winter.utils.voyager import Voyager, VoyagerError
 
 from .lexemes import SINGLE_CHAR_LEXEMES, Lexeme, StringLikeLex
 
 
-class LexerError(RuntimeError): ...
+@define
+class LexerError(VoyagerError): ...
 
 
 BACKSLASH_VALUES = {

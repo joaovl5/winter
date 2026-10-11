@@ -1,5 +1,11 @@
 let
   my_vale = 41;
+  my_map = {
+    gaba = 10;
+    taga = 20;
+  };
+  has_gaba = my_map ? "${"gaba"}";
+  tiga_or_taga = my_map."${"tiga"}" or "${(my_map)."${"taga"}"}";
 in [
   (let
     a = 5;

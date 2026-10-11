@@ -114,3 +114,28 @@ def walk_context(
     ctx = evolve(ctx, body=out_items)
     ctx_update = ctx_cb(ctx)
     return ctx_update.updated_t
+
+
+type LineNumber = int
+type CharNumber = int
+
+type LinePos = tuple[LineNumber, CharNumber]
+
+
+def convert_position(
+    pos: CharNumber,
+    source: str,
+) -> LinePos:
+    chars_passed = 0
+    for line_num, line in enumerate(source.splitlines(keepends=True)):
+        line_len = len(line)
+        line_start = chars_passed
+        chars_passed += line_len
+        delta = chars_passed - pos
+        if delta < 0:
+            continue
+        # if delta is zero, pos is at the line's end
+        # if positive, line's end exceeds pos by <delta>
+        return line_num, pos - line_start
+    msg = "The given position is outside the bounds of the file"
+    raise RuntimeError(msg)

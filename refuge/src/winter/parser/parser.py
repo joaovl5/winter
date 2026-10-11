@@ -4,7 +4,7 @@ from attrs import Factory, define, field
 from loguru import logger
 
 from winter.lexer.lexemes import Lexeme
-from winter.utils.voyager import Voyager
+from winter.utils.voyager import Voyager, VoyagerError
 
 from .ast import AST
 from .parser_binds import BindsParser
@@ -16,7 +16,8 @@ from .parser_ref import RefParser
 from .parser_scalar import ScalarParser
 
 
-class ParserError(RuntimeError): ...
+@define
+class ParserError(VoyagerError): ...
 
 
 @define

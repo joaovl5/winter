@@ -80,6 +80,17 @@ class AST:
         case_true: AST.Type
         case_false: AST.Type
 
+    @def_strict
+    class ATTRSET_HAS(_Base):
+        attrset: AST.Type
+        has_expr: AST.Type
+
+    @def_strict
+    class ATTRSET_OR(_Base):
+        attrset: AST.Type
+        maybe_expr: AST.Type
+        else_expr: AST.Type
+
     type Type = (
         NULL
         | BOOL
@@ -96,6 +107,8 @@ class AST:
         | APPLY
         | SELECTION
         | IF
+        | ATTRSET_HAS
+        | ATTRSET_OR
     )
 
 

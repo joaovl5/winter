@@ -330,7 +330,11 @@ class Compiler:
         sym = OPERATOR_MAPPING[op]
         sym_repr = f"`{op!r} - {sym}`"
         if isinstance(sym, OpSpecialCase):
-            return self._todo()
+            return self._parse_op_special_case(
+                op_case=sym,
+                sym_repr=sym_repr,
+                nix_tail=nix_tail,
+            )
         match nix_tail:
             case []:
                 raise RuntimeError("empty op tail should never happen")
@@ -361,6 +365,53 @@ class Compiler:
                     )
                     return self._error(msg)
                 return nix.AST.N_ARY_OP(items=items, op=sym), None
+
+    def _parse_op_special_case(
+        self,
+        *,
+        op_case: OpSpecialCase,
+        sym_repr: str,
+        nix_tail: list[nix.AST.Type],
+    ) -> _NixRes:
+        if (tail_len := len(nix_tail)) < 2:
+            msg = f"Operator call {sym_repr} must have at least two items"
+            return self._error(msg)
+        match op_case:
+            case OpSpecialCase.DOT_SEL:
+                head, *tail = nix_tail
+                tail = [self._expr_as_str(x) for x in tail]
+                return nix.AST.SELECTION(
+                    base=head,
+                    path=tail,
+                ), None
+            case OpSpecialCase.SEL_HAS:
+                if tail_len != 2:
+                    msg = f"Operator call {sym_repr} needs exactly 2 arguments, got {tail_len}"
+                    return self._error(msg)
+                attrset_expr, has_expr = nix_tail[0], nix_tail[1]
+                has_expr = self._expr_as_str(has_expr)
+                return nix.AST.ATTRSET_HAS(
+                    attrset=attrset_expr,
+                    has_expr=has_expr,
+                ), None
+            case OpSpecialCase.SEL_OR:
+                if tail_len != 3:
+                    msg = f"Operator call {sym_repr} needs exactly 3 arguments, got {tail_len}"
+                    return self._error(msg)
+                attrset_expr, maybe_expr, else_expr = nix_tail
+                maybe_expr = self._expr_as_str(maybe_expr)
+                else_expr = self._expr_as_str(else_expr)
+                return nix.AST.ATTRSET_OR(
+                    attrset=attrset_expr,
+                    maybe_expr=maybe_expr,
+                    else_expr=else_expr,
+                ), None
+
+    def _expr_as_str(self, expr: nix.AST.Type) -> nix.AST.Type:
+        return nix.AST.STRING_LIKE(
+            is_path=False,
+            value=[nix.StringLikePart.EXPR(value=expr)],
+        )
 
     def _parse_bindings(
         self, binds: Sequence[AST.MAP.MapBind | InheritNode | OneBind]

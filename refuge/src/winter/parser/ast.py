@@ -18,8 +18,8 @@ type ManyInherits = list[InheritNode]
 @def_strict
 class Context:
     file: Path
-    name: str
     body: list[AST.Type]
+    name: str | None = None
 
 
 @def_strict

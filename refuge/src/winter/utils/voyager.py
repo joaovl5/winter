@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator, Iterator, Sequence
 from functools import cached_property
+from typing import override
 
 from attrs import define, field
 from more_itertools import SequenceView, loops, seekable
@@ -9,7 +10,18 @@ from winter.utils.error_box import ErrorBox
 
 
 @define
-class Voyager[In, Target, Err: Exception](ABC):
+class VoyagerError(Exception):
+    msg: str
+    pos_start: int
+    pos_end: int
+
+    @override
+    def __repr__(self) -> str:
+        return f"@({self.pos_start}→{self.pos_end}): {self.msg}"
+
+
+@define
+class Voyager[In, Target, Err: VoyagerError](ABC):
     source: Iterator[In]
     error_t: type[Err]
     pos: int = 0
@@ -90,8 +102,11 @@ class Voyager[In, Target, Err: Exception](ABC):
 
     def _error(self, msg: str, *, error_t: type[Err]) -> Err:
         pos_a, pos_b = self._get_resolved_pos()
-        pos_str = f"({pos_a}→{pos_b})"
-        return error_t(f"at {pos_str} : {msg}")
+        return error_t(
+            msg=msg,
+            pos_start=pos_a,
+            pos_end=pos_b,
+        )
 
     def _mk_err_box(self) -> ErrorBox[Err]:
         return ErrorBox(

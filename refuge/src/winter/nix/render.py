@@ -26,6 +26,22 @@ def render_nix_ast(node: AST.Type) -> str:
         case AST.UNARY_OP(value=value, op=op):
             value = _render_as_arg(value)
             return f"{op} " + value
+        case AST.ATTRSET_HAS(
+            attrset=attrset,
+            has_expr=has_expr,
+        ):
+            attrset_nix = render_nix_ast(attrset)
+            has_expr_nix = render_nix_ast(has_expr)
+            return f"{attrset_nix} ? {has_expr_nix}"
+        case AST.ATTRSET_OR(
+            attrset=attrset,
+            maybe_expr=maybe_expr,
+            else_expr=else_expr,
+        ):
+            attrset_nix = render_nix_ast(attrset)
+            maybe_expr_nix = render_nix_ast(maybe_expr)
+            else_expr_nix = render_nix_ast(else_expr)
+            return f"{attrset_nix}.{maybe_expr_nix} or {else_expr_nix}"
         case AST.LAMBDA(arg=arg, body=body):
             arg = _render_lambda_arg(arg)
             body = render_nix_ast(body)
