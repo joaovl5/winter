@@ -4,22 +4,22 @@
   has_gaba (has my_map "gaba")
   tiga_or_taga (or my_map "tiga" (. my_map "taga")))
 
-[ (let [a 5
-        b 6
-        x "Bla bla {} "
-        y "{{hey}}"]
-   (fn [x
-        y
-        z]
-     (locals
-       my_val 10
-       testing_if
-       (if (= true true)
-        10
-        (if (not= false false)
-         15
-         20)))
-     (+ x y a my_val my_vale)))
+[(let [a 5
+       b 6
+       x "Bla bla {} "
+       y "{{hey}}"]
+  (fn [x
+       y
+       z]
+    (locals
+      my_val 10
+      testing_if
+      (if (= true true)
+       10
+       (if (not= false false)
+        15
+        20)))
+    (+ x y a my_val my_vale)))
  (fn {pkgs ...}
    [(inherit pkgs (foo bar baz))])]
 
