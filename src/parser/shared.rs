@@ -2,70 +2,69 @@ use super::*;
 use crate::tokenizer::{StringLikeTokenPart, TokenVal};
 
 impl<'tks, 'src> Parser<'tks, 'src> {
-    pub(super) fn parse_dotted_path(
-        &mut self,
-        allow_eof: bool,
-    ) -> ParserRes<(ManyNodes<'src>, usize)> {
-        // assumes `peek()` is in pos to get first item of path
-        let mut items: ManyNodes<'src> = Vec::new();
-        let mut pos_end: usize;
-        loop {
-            let next_tk = match self.next() {
-                Some(tk) => tk,
-                None => return Err(self.error("Unterminated dotted path")),
-            };
-            pos_end = next_tk.pos_end;
-            let ast_val = match &next_tk.value {
-                TokenVal::Atom(name) => AstVal::Identifier(name),
-                TokenVal::StringLike { parts, is_path } if !is_path => {
-                    self.parse_str_like(parts, false)?
-                }
-                _ => {
-                    return Err(
-                        self.error("Dotted path only supports identifier or string attributes")
-                    )
-                }
-            };
-            items.push(ast_val);
-            // expected to be a dot
-            let dot_tk = match self.peek() {
-                Some(tk) => &tk.value,
-                None if allow_eof => break,
-                None => return Err(self.error("Unterminated dotted path")),
-            };
-            if !matches!(dot_tk, TokenVal::Dot) {
-                break;
-            }
-            self.next();
-        }
-        Ok((items, pos_end))
+  pub(super) fn parse_dotted_path(
+    &mut self,
+    allow_eof: bool,
+  ) -> ParserRes<(ManyNodes<'src>, usize)> {
+    // assumes `peek()` is in pos to get first item of path
+    let mut items: ManyNodes<'src> = Vec::new();
+    let mut pos_end: usize;
+    loop {
+      let next_tk = match self.next() {
+        | Some(tk) => tk,
+        | None => return Err(self.error("Unterminated dotted path")),
+      };
+      pos_end = next_tk.pos_end;
+      let ast_val = match &next_tk.value {
+        | TokenVal::Atom(name) => AstVal::Identifier(name),
+        | TokenVal::StringLike { parts, is_path } if !is_path =>
+          self.parse_str_like(parts, false)?,
+        | _ =>
+          return Err(self.error(
+            "Dotted path only supports identifier or string attributes",
+          )),
+      };
+      items.push(ast_val);
+      // expected to be a dot
+      let dot_tk = match self.peek() {
+        | Some(tk) => &tk.value,
+        | None if allow_eof => break,
+        | None => return Err(self.error("Unterminated dotted path")),
+      };
+      if !matches!(dot_tk, TokenVal::Dot) {
+        break;
+      }
+      self.next();
     }
+    Ok((items, pos_end))
+  }
 
-    pub(super) fn parse_str_like(
-        &self,
-        parts: &[StringLikeTokenPart<'src>],
-        is_path: bool,
-    ) -> ParserRes<AstVal<'src>> {
-        let mut out_parts: Vec<StringLikeASTPart<'src>> = Vec::new();
-        for tk_part in parts {
-            let out_part = match tk_part {
-                StringLikeTokenPart::Text(txt) => StringLikeASTPart::Text(txt.clone()),
-                StringLikeTokenPart::Expr(part_tks) => {
-                    // This won't give exact end positions, but that is fine for now!!
-                    let err_empty = self.error("String interpolation must not be empty");
-                    let part_ast = Parser::new(part_tks).parse_one()?;
-                    match part_ast {
-                        Some(x) => StringLikeASTPart::Expr(x.value),
-                        None => return Err(err_empty),
-                    }
-                }
-            };
-            out_parts.push(out_part);
-        }
-        let out = AstVal::StringLike {
-            parts: out_parts,
-            is_path,
-        };
-        Ok(out)
+  pub(super) fn parse_str_like(
+    &self,
+    parts: &[StringLikeTokenPart<'src>],
+    is_path: bool,
+  ) -> ParserRes<AstVal<'src>> {
+    let mut out_parts: Vec<StringLikeASTPart<'src>> = Vec::new();
+    for tk_part in parts {
+      let out_part = match tk_part {
+        | StringLikeTokenPart::Text(txt) =>
+          StringLikeASTPart::Text(txt.clone()),
+        | StringLikeTokenPart::Expr(part_tks) => {
+          // This won't give exact end positions, but that is fine for now!!
+          let err_empty = self.error("String interpolation must not be empty");
+          let part_ast = Parser::new(part_tks).parse_one()?;
+          match part_ast {
+            | Some(x) => StringLikeASTPart::Expr(x.value),
+            | None => return Err(err_empty),
+          }
+        },
+      };
+      out_parts.push(out_part);
     }
+    let out = AstVal::StringLike {
+      parts: out_parts,
+      is_path,
+    };
+    Ok(out)
+  }
 }

@@ -8,9 +8,9 @@ mod utils;
 use crate::compiler::compile_source;
 
 fn test_nix_compile() {
-    compile_source(todo!());
+  compile_source(todo!());
 }
 
 fn main() {
-    test_nix_compile();
+  test_nix_compile();
 }

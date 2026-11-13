@@ -1,0 +1,12 @@
+[build]
+  rustflags = ["-Ccodegen-units=8", "--cfg", "tokio_unstable"]
+
+[profile.server-dev]
+  codegen-backend = "cranelift"
+
+[target.'cfg(target_os = "linux")']
+  linker    = "clang"
+  rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+
+[unstable]
+  codegen-backend = true

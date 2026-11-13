@@ -1,13 +1,13 @@
 [project]
-  name = "winter"
-  version = "0.1.0"
-  description = "Winter POC"
-  readme = "README.md"
-  authors = [
+  name            = "winter"
+  version         = "0.1.0"
+  description     = "Winter POC"
+  readme          = "README.md"
+  requires-python = ">=3.15"
+  authors         = [
     { name = "Joao Pedro", email = "vieiraleao2005@gmail.com" },
   ]
-  requires-python = ">=3.15"
-  dependencies = [
+  dependencies    = [
     "attrs>=26.1.0",
     "cyclopts>=4.25.3",
     "loguru>=0.7.3",
@@ -40,4 +40,4 @@
   reportAny                       = false
   reportUnannotatedClassAttribute = false
   reportPrivateUsage              = false
-  reportImportCycles              = false              # pyright is stupid
+  reportImportCycles              = false               # pyright is stupid

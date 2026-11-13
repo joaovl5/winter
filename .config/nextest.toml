@@ -1,0 +1,9 @@
+[profile.default]
+  test-threads = "num-cpus"
+  fail-fast    = false
+  status-level = "fail"
+
+  [profile.default.retries]
+    backoff = "fixed"
+    count   = 2
+    delay   = "1s"

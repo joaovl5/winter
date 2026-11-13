@@ -1,17 +1,18 @@
 [global]
-  exclude = [
+  exclude           = [
     ".git",
     ".github",
     "node_modules",
     "vendor",
     "dist",
-    "build",
+    "build"
   ]
   respect-gitignore = true
-  flavor = "gfm"
+  flavor            = "gfm"
+  disable           = ["MD033", "MD041"]
 
 [MD013]
-  line-length = 78
+  line-length = 80
   code-blocks = false
   tables      = false
   headings    = false

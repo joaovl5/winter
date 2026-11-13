@@ -1,0 +1,13 @@
+toml-version = "v1.0.0"
+
+[format.rules]
+  array-bracket-space-width         = 0
+  array-comma-space-width           = 1
+  indent-sub-tables                 = true
+  indent-table-key-value-pairs      = true
+  inline-table-brace-space-width    = 1
+  inline-table-comma-space-width    = 1
+  key-value-equals-sign-alignment   = true
+  key-value-equals-sign-space-width = 1
+  line-width                        = 80
+  trailing-comment-alignment        = true

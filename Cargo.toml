@@ -1,8 +1,50 @@
-[package]
-  name    = "winter"
-  version = "1.0.0"
-  edition = "2021"
+[workspace]
+  resolver = "3"
+  members  = ["crates/*"]
 
-[dependencies]
-  itertools = "0.14.0"
-  # example = "1.0.0"
+  [workspace.package]
+    version      = "0.1.0"
+    edition      = "2024"
+    description  = "Programming language that compiles into Nix"
+    readme       = "README.md"
+    license-file = "LICENSE.adoc"
+
+  [workspace.dependencies]
+    anyhow             = { version = "1.0.104" }
+    clap               = {
+      version  = "4.6.7",
+      features = [
+        "cargo",
+        "derive",
+        "env",
+        "string",
+        "unicode",
+        "wrap_help",
+      ]
+    }
+    derive_more        = { version = "2.1.1", features = ["full"] }
+    itertools          = "0.14.0"
+    piping             = { version = "1.0.0" }
+    thiserror          = { version = "2.0.1" }
+    tokio              = {
+      version  = "1.54.1",
+      features = ["full", "io-uring", "tracing"]
+    }
+    tracing            = { version = "0.1" }
+    tracing-subscriber = {
+      version  = "0.3",
+      features = [
+        "env-filter",
+        "local-time",
+        "time",
+        "tracing-log",
+      ]
+    }
+
+  [workspace.metadata]
+    # used on nix packaging
+    project-name = "winter"
+
+[profile.dev]
+  opt-level   = 1
+  incremental = true

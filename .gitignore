@@ -1,5 +1,6 @@
-target/
-banks
-result*
-result-*
 .direnv
+/target
+/result
+/.prek.toml
+/.bacon-locations
+/.bacon.socket

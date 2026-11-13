@@ -1,0 +1,17 @@
+[shorturls]
+  gh = "github:{path}"
+
+[all_follow]
+  nixpkgs = "nixpkgs"
+
+[inputs.nixpkgs]
+  url = "https://channels.nixos.org/nixpkgs-unstable/nixexprs.tar.xz"
+
+[inputs.nix-vessel]
+  url = "gh:joaovl5/nix-vessel"
+
+[inputs.treefmt]
+  url = "gh:numtide/treefmt-nix"
+
+[inputs.rust-overlay]
+  url = "gh:oxalica/rust-overlay"
