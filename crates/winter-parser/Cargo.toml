@@ -1,0 +1,14 @@
+[package]
+  name = "winter-parser"
+
+  version.workspace      = true
+  edition.workspace      = true
+  description.workspace  = true
+  readme.workspace       = true
+  license-file.workspace = true
+
+[dependencies]
+  itertools.workspace = true
+  rayon.workspace     = true
+  thiserror.workspace = true
+  tracing.workspace   = true

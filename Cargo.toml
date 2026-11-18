@@ -23,12 +23,14 @@
       ]
     }
     derive_more        = { version = "2.1.1", features = ["full"] }
-    itertools          = "0.14.0"
+    human-panic        = { version = "2.0.8" }
+    itertools          = { version = "0.14.0" }
     piping             = { version = "1.0.0" }
+    rayon              = { version = "1.12.0" }
     thiserror          = { version = "2.0.1" }
-    tokio              = {
-      version  = "1.54.1",
-      features = ["full", "io-uring", "tracing"]
+    time               = {
+      version  = "0.3.55",
+      features = ["formatting", "local-offset", "macros"]
     }
     tracing            = { version = "0.1" }
     tracing-subscriber = {
