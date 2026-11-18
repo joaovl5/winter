@@ -27,8 +27,8 @@ impl LexerByteEncoding {
 
 #[derive(Debug, Clone)]
 pub struct Lexer<I: Iterator<Item = char>> {
-  cur:           Cursor<char, I>,
-  byte_encoding: LexerByteEncoding,
+  pub(super) cur:           Cursor<char, I>,
+  pub(super) byte_encoding: LexerByteEncoding,
 }
 
 fn make_chars<'input>(
@@ -43,11 +43,11 @@ pub fn mk_lexer_str_iter<'input>(
   Lexer::new(make_chars(iterator))
 }
 
-pub type Lex<'a> = Spanned<Lexeme<'a>>;
+pub type Lex = Spanned<Lexeme>;
 pub type LexerRes<T> = Result<T, SpannedError<LexerError>>;
 pub type LexerResOpt<T> = LexerRes<Option<T>>;
-pub type LexemeRes<'a> = LexerRes<Lex<'a>>;
-pub type LexemeResOpt<'a> = LexerResOpt<Lex<'a>>;
+pub type LexemeRes = LexerRes<Lex>;
+pub type LexemeResOpt = LexerResOpt<Lex>;
 
 /// Checks if a returned `Option<T>` is `Some(T)` and, if so, returns early with
 /// an `ok_some!()` call. This can be done repeatedly, for many functions, by
@@ -60,16 +60,17 @@ macro_rules! try_handle {
   };
 }
 
-impl<'a, I: Iterator<Item = char> + 'a> Lexer<I> {
+impl<I: Iterator<Item = char>> Lexer<I> {
   pub fn new(iter: I) -> Self {
     Self {
       cur:           Cursor::new(iter),
       // hardcoded for now!
+      // TODO: use this
       byte_encoding: LexerByteEncoding::UTF_8,
     }
   }
 
-  pub fn parse(&mut self) -> impl Iterator<Item = LexemeResOpt<'a>> {
+  pub fn parse(&mut self) -> impl Iterator<Item = LexemeResOpt> {
     std::iter::from_coroutine(
       #[coroutine]
       || {
@@ -86,7 +87,7 @@ impl<'a, I: Iterator<Item = char> + 'a> Lexer<I> {
     )
   }
 
-  pub fn parse_one(&mut self) -> LexemeResOpt<'a> {
+  pub(super) fn parse_one(&mut self) -> LexemeResOpt {
     try_handle!(
       self.parse_comment()?,
       self.parse_ellipsis()?,
@@ -99,7 +100,7 @@ impl<'a, I: Iterator<Item = char> + 'a> Lexer<I> {
     ok_none!();
   }
 
-  pub fn parse_comment(&mut self) -> LexemeResOpt<'a> {
+  fn parse_comment(&mut self) -> LexemeResOpt {
     if !self.peek()?.is_some_and(|x| x == ';') {
       ok_none!();
     };
@@ -117,11 +118,11 @@ impl<'a, I: Iterator<Item = char> + 'a> Lexer<I> {
     ok_some!(span_this!(
       pos_start,
       self.pos(),
-      Lexeme::VALUE_COMMENT(String::from_iter(out.iter()).as_str())
+      Lexeme::VALUE_COMMENT(String::from_iter(out.iter()))
     ))
   }
 
-  fn parse_ellipsis(&mut self) -> LexemeResOpt<'a> {
+  fn parse_ellipsis(&mut self) -> LexemeResOpt {
     if !self.starts_with("...") {
       ok_none!();
     }
@@ -133,7 +134,7 @@ impl<'a, I: Iterator<Item = char> + 'a> Lexer<I> {
     ok_some!(span_this!(self.pos() - 3, self.pos(), Lexeme::ELLIPSIS));
   }
 
-  fn parse_single_char(&mut self) -> LexemeResOpt<'a> {
+  fn parse_single_char(&mut self) -> LexemeResOpt {
     let ch = self.peek()?.expect("shouldn't be none");
     if let Some(lx) = Lexeme::from_char(ch) {
       ok_some!(span_this!(self.pos(), lx));
@@ -141,28 +142,31 @@ impl<'a, I: Iterator<Item = char> + 'a> Lexer<I> {
     ok_none!();
   }
 
-  fn map_err<Err: std::error::Error + 'static>(
-    &self,
-    err: Err,
-  ) -> SpannedError<LexerError> {
-    span_err!(self.pos(), LexerError::other(err))
+  pub(super) fn peek(&mut self) -> LexerResOpt<char> {
+    map_err(self.pos(), self.cur.peek())
   }
 
-  fn peek(&mut self) -> LexerResOpt<char> {
-    self.cur.peek().map_err(|err| self.map_err(err))
+  pub(super) fn next(&mut self) -> LexerResOpt<char> {
+    map_err(self.pos(), self.cur.next())
   }
 
-  fn next(&mut self) -> LexerResOpt<char> {
-    self.cur.next().map_err(|err| self.map_err(err))
-  }
-
-  fn pos(&self) -> usize {
+  pub(super) fn pos(&self) -> usize {
     self.cur.pos
   }
 
-  fn starts_with(&mut self, s: &str) -> bool {
+  pub(super) fn starts_with(&mut self, s: &str) -> bool {
     s.chars()
       .enumerate()
       .all(|(i, c)| self.cur.peek_nth(i).is_ok_and(|x| x == Some(c)))
+  }
+}
+
+pub(super) fn map_err<T, Err: std::error::Error + 'static>(
+  pos: usize,
+  res: Result<T, Err>,
+) -> LexerRes<T> {
+  match res {
+    | Ok(x) => Ok(x),
+    | Err(err) => span_err!(pos, LexerError::other(err)),
   }
 }

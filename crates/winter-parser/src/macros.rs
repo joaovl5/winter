@@ -44,15 +44,19 @@ macro_rules! span_this {
   };
 }
 
+/// It's like `span_this!` but for [`SpannedError`], and also prefixes a return.
 #[macro_export]
 macro_rules! span_err {
   ($pos_start:expr, $err:expr) => {
-    $crate::types::SpannedError(
+    return Err($crate::types::SpannedError(
       $crate::types::Span($pos_start, $pos_start),
       $err,
-    )
+    ))
   };
   ($pos_start:expr, $pos_end:expr, $err:expr) => {
-    $crate::types::SpannedError($crate::types::Span($pos_start, $pos_end), $err)
+    return Err($crate::types::SpannedError(
+      $crate::types::Span($pos_start, $pos_end),
+      $err,
+    ))
   };
 }

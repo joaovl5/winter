@@ -1,6 +1,6 @@
 use super::Spanned;
 
-pub enum Lexeme<'input> {
+pub enum Lexeme {
   START_PAREN,          // (
   START_SQUARE_BRACKET, // [
   START_CURLY_BRACE,    // {
@@ -17,20 +17,20 @@ pub enum Lexeme<'input> {
   SIGN_HASHTAG,     // #
   SIGN_QUESTION,    // ?
   // keep-sorted end
-  VALUE_ATOM(&'input str),
-  VALUE_NUMBER(&'input str),
-  VALUE_TEXTUAL { parts: Vec<LexemeTextualPart<'input>>, is_path: bool },
-  VALUE_COMMENT(&'input str),
+  VALUE_ATOM(String),
+  VALUE_NUMBER(String),
+  VALUE_TEXTUAL { parts: Vec<LexemeTextualPart>, is_path: bool },
+  VALUE_COMMENT(String),
 }
 
-pub enum LexemeTextualPart<'input> {
-  TEXT(&'input str),
-  EXPR(Vec<Lexeme<'input>>),
+pub enum LexemeTextualPart {
+  TEXT(String),
+  EXPR(Vec<Lexeme>),
 }
 
-pub type SpannedLexeme<'a> = Spanned<Lexeme<'a>>;
+pub type SpannedLexeme = Spanned<Lexeme>;
 
-impl<'a> Lexeme<'a> {
+impl Lexeme {
   /// Get the character attributed to this lexeme, if applicable, otherwise just
   /// returns `None`.
   pub fn get_char(&self) -> Option<char> {
