@@ -88,6 +88,7 @@ impl<I: Iterator<Item = char>> Lexer<I> {
       super::map_err(self.pos(), self.cur.pos_rollback())?;
       ok_none!();
     } else {
+      super::map_err(self.pos(), self.cur.pos_commit())?;
       let lex = Lexeme::VALUE_TEXTUAL { parts, is_path };
       ok_some!(span_this!(pos_start, pos_end, lex))
     };

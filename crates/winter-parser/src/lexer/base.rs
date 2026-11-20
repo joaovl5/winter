@@ -5,7 +5,7 @@ use std::str::Chars;
 use itertools::{Itertools, PeekNth, peek_nth};
 
 use super::LexerError;
-use crate::types::{Lexeme, Spanned, SpannedError};
+use crate::types::{Lexeme, Spanned, SpannedError, WhitespaceKind};
 use crate::utils::Cursor;
 use crate::{ok_none, ok_some, span_err, span_this};
 
@@ -89,7 +89,7 @@ impl<I: Iterator<Item = char>> Lexer<I> {
 
   pub(super) fn parse_one(&mut self) -> LexemeResOpt {
     try_handle!(
-      self.parse_comment()?,
+      self.parse_ignored()?,
       self.parse_ellipsis()?,
       self.parse_single_char()?,
       self.parse_textual()?,
@@ -100,26 +100,53 @@ impl<I: Iterator<Item = char>> Lexer<I> {
     ok_none!();
   }
 
-  fn parse_comment(&mut self) -> LexemeResOpt {
-    if !self.peek()?.is_some_and(|x| x == ';') {
+  // parses hidden/ignored stuff like comments and whitespace
+  fn parse_ignored(&mut self) -> LexemeResOpt {
+    let Some(ch) = self.peek()? else { ok_none!() };
+    let pos_start = self.pos();
+    if ch == ';' {
+      self.next()?;
+      let mut out = Vec::<char>::new();
+      loop {
+        let Some(ch) = self.next()? else { break };
+        match ch {
+          | '\n' => break,
+          | _ => out.push(ch),
+        }
+      }
+      ok_some!(span_this!(
+        pos_start,
+        self.pos(),
+        Lexeme::VALUE_COMMENT(String::from_iter(out.iter()))
+      ))
+    } else if ch.is_whitespace() {
+      self.next()?;
+      // NOTE: we only accept tabs or spaces, and whatever other insanities that
+      // unicode supports as whitespace are handled as spaces. we can add an
+      // option to hard-error instead of this silent behavior later
+      let kind = WhitespaceKind::from_char(ch).unwrap_or(WhitespaceKind::SPACE);
+      let mut count: NonZero<u8> = unsafe { NonZero::new_unchecked(1) };
+      loop {
+        let Some(ch_2) = self.peek()? else { break };
+        let ch_2_kind =
+          WhitespaceKind::from_char(ch_2).unwrap_or(WhitespaceKind::SPACE);
+        if ch_2_kind == kind
+          && let Some(new_count) = count.checked_add(1)
+        {
+          self.next()?;
+          count = new_count;
+        } else {
+          break;
+        }
+      }
+      ok_some!(span_this!(
+        pos_start,
+        self.pos(),
+        Lexeme::VALUE_WHITESPACE { kind, count }
+      ))
+    } else {
       ok_none!();
     };
-    let _ = self.next()?;
-    let pos_start = self.pos();
-    let mut out = Vec::<char>::new();
-    loop {
-      let Some(ch) = self.next()? else { break };
-      match ch {
-        | '\n' => break,
-        | _ => out.push(ch),
-      }
-    }
-
-    ok_some!(span_this!(
-      pos_start,
-      self.pos(),
-      Lexeme::VALUE_COMMENT(String::from_iter(out.iter()))
-    ))
   }
 
   fn parse_ellipsis(&mut self) -> LexemeResOpt {
@@ -134,9 +161,10 @@ impl<I: Iterator<Item = char>> Lexer<I> {
     ok_some!(span_this!(self.pos() - 3, self.pos(), Lexeme::ELLIPSIS));
   }
 
-  fn parse_single_char(&mut self) -> LexemeResOpt {
-    let ch = self.peek()?.expect("shouldn't be none");
+  pub(super) fn parse_single_char(&mut self) -> LexemeResOpt {
+    let Some(ch) = self.peek()? else { ok_none!() };
     if let Some(lx) = Lexeme::from_char(ch) {
+      self.next()?;
       ok_some!(span_this!(self.pos(), lx));
     }
     ok_none!();
@@ -161,7 +189,7 @@ impl<I: Iterator<Item = char>> Lexer<I> {
   }
 }
 
-pub(super) fn map_err<T, Err: std::error::Error + 'static>(
+pub(super) fn map_err<T, Err: std::error::Error + Send + Sync + 'static>(
   pos: usize,
   res: Result<T, Err>,
 ) -> LexerRes<T> {

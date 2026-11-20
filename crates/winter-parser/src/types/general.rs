@@ -3,11 +3,29 @@ use std::fmt::Display;
 use itertools::Itertools;
 
 /// Span with `START` and `STOP` positions.
+#[derive(Debug)]
 pub struct Span(pub usize, pub usize);
+#[derive(Debug)]
 pub struct Spanned<T>(pub Span, pub T);
 
-#[derive(thiserror::Error)]
-pub struct SpannedError<E: std::error::Error>(pub Span, #[source] pub E);
+impl Display for Span {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "@{}:{}", self.0, self.1)
+  }
+}
+
+impl<T: Display> Display for Spanned<T> {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "{} {}", self.0, self.1)
+  }
+}
+
+#[derive(thiserror::Error, Debug)]
+#[error("Error at {0}: {1}")]
+pub struct SpannedError<E: std::error::Error + Send + Sync + 'static>(
+  pub Span,
+  #[source] pub E,
+);
 
 #[derive(Debug)]
 pub enum WantedCandidates<T: Display> {

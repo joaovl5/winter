@@ -28,12 +28,20 @@ pub enum LexerError {
   #[error("Unterminated '}}' in interpolated string/path")]
   UNEX_STR_INTERP_CLOSE,
 
+  #[error("Unexpected '{0}' char following digits '{1}'")]
+  UNEX_NUM_CHAR(char, String),
+
+  #[error("Unterminated dot component on number literal '{0}'")]
+  UNT_NUM_DOT(String),
+
   #[error(transparent)]
-  OTHER(#[from] Box<dyn std::error::Error>),
+  OTHER(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
 }
 
 impl LexerError {
-  pub fn other<Err: std::error::Error + 'static>(err: Err) -> Self {
+  pub fn other<Err: std::error::Error + Send + Sync + 'static>(
+    err: Err,
+  ) -> Self {
     Self::OTHER(Box::new(err))
   }
 }

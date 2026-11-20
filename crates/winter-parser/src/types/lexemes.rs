@@ -1,5 +1,8 @@
+use std::num::NonZero;
+
 use super::Spanned;
 
+#[derive(Debug, PartialEq, PartialOrd, Ord, Eq)]
 pub enum Lexeme {
   START_PAREN,          // (
   START_SQUARE_BRACKET, // [
@@ -21,8 +24,28 @@ pub enum Lexeme {
   VALUE_NUMBER(String),
   VALUE_TEXTUAL { parts: Vec<LexemeTextualPart>, is_path: bool },
   VALUE_COMMENT(String),
+  VALUE_WHITESPACE { kind: WhitespaceKind, count: NonZero<u8> },
 }
 
+#[derive(Debug, PartialEq, PartialOrd, Ord, Eq)]
+pub enum WhitespaceKind {
+  TAB,
+  SPACE,
+  BREAK,
+}
+
+impl WhitespaceKind {
+  pub fn from_char(ch: char) -> Option<Self> {
+    match ch {
+      | '\t' => Some(Self::TAB),
+      | ' ' => Some(Self::SPACE),
+      | '\n' => Some(Self::BREAK),
+      | _ => None,
+    }
+  }
+}
+
+#[derive(Debug, PartialEq, PartialOrd, Ord, Eq)]
 pub enum LexemeTextualPart {
   TEXT(String),
   EXPR(Vec<Lexeme>),
