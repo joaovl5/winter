@@ -13,6 +13,9 @@
     winter-parser = { path = "./crates/winter-parser/" }
 
     anyhow             = { version = "1.0.104" }
+    arbitrary-int      = { version = "2.2.0" }
+    bitbybit           = { version = "2.0.1" }
+    bumpalo            = { version = "3.20.4" }
     clap               = {
       version  = "4.6.7",
       features = [
@@ -28,8 +31,11 @@
     derive_more        = { version = "2.1.1", features = ["full"] }
     human-panic        = { version = "2.0.8" }
     itertools          = { version = "0.14.0" }
+    kinded             = { version = "0.5.1" }
     piping             = { version = "1.0.0" }
     rayon              = { version = "1.12.0" }
+    strum              = { version = "0.28.0" }
+    strum_macros       = { version = "0.28.0" }
     thiserror          = { version = "2.0.1" }
     time               = {
       version  = "0.3.55",

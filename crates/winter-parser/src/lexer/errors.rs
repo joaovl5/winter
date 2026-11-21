@@ -1,17 +1,9 @@
-use std::fmt::Display;
-
 use itertools::Itertools;
-use thiserror::Error;
 
-use crate::types::WantedCandidates;
-
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum LexerError {
   #[error("Unexpected end of file")]
   UNEX_EOF,
-
-  #[error("Unexpected char! Got '{got}', wanted {wanted}")]
-  UNEX_CHAR { got: char, wanted: WantedCandidates<char> },
 
   #[error("Unterminated string/path")]
   UNT_STR,
@@ -27,9 +19,6 @@ pub enum LexerError {
 
   #[error("Unterminated '}}' in interpolated string/path")]
   UNEX_STR_INTERP_CLOSE,
-
-  #[error("Unexpected '{0}' char following digits '{1}'")]
-  UNEX_NUM_CHAR(char, String),
 
   #[error("Unterminated dot component on number literal '{0}'")]
   UNT_NUM_DOT(String),

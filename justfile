@@ -1,9 +1,16 @@
 #!/usr/bin/env just --justfile
-
-#!/usr/bin/env just --justfile
+set positional-arguments
 
 @_:
   just --list
+
+RUST_LOG := "trace"
+
+run *args:
+  RUST_LOG={{RUST_LOG}} cargo run --bin winter-cli -- "$@"
+
+
+
 
 check: check-cargo check-clippy check-fmt
 

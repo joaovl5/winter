@@ -1,9 +1,11 @@
 use std::num::NonZero;
 
+use kinded::Kinded;
+
 use super::Spanned;
 
-#[derive(Debug, PartialEq, PartialOrd, Ord, Eq)]
-pub enum Lexeme {
+#[derive(Kinded, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Lexeme<'a> {
   START_PAREN,          // (
   START_SQUARE_BRACKET, // [
   START_CURLY_BRACE,    // {
@@ -20,14 +22,14 @@ pub enum Lexeme {
   SIGN_HASHTAG,     // #
   SIGN_QUESTION,    // ?
   // keep-sorted end
-  VALUE_ATOM(String),
-  VALUE_NUMBER(String),
-  VALUE_TEXTUAL { parts: Vec<LexemeTextualPart>, is_path: bool },
-  VALUE_COMMENT(String),
+  VALUE_ATOM(&'a str),
+  VALUE_NUMBER(&'a str),
+  VALUE_TEXTUAL { parts: &'a [LexemeTextualPart<'a>], is_path: bool },
+  VALUE_COMMENT(&'a str),
   VALUE_WHITESPACE { kind: WhitespaceKind, count: NonZero<u8> },
 }
 
-#[derive(Debug, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WhitespaceKind {
   TAB,
   SPACE,
@@ -43,17 +45,25 @@ impl WhitespaceKind {
       | _ => None,
     }
   }
+
+  pub fn as_str(&self) -> &'static str {
+    match *self {
+      | Self::TAB => "\\t",
+      | Self::BREAK => "\\n",
+      | Self::SPACE => " ",
+    }
+  }
 }
 
-#[derive(Debug, PartialEq, PartialOrd, Ord, Eq)]
-pub enum LexemeTextualPart {
-  TEXT(String),
-  EXPR(Vec<Lexeme>),
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LexemeTextualPart<'a> {
+  TEXT(&'a str),
+  EXPR(&'a [Lexeme<'a>]),
 }
 
-pub type SpannedLexeme = Spanned<Lexeme>;
+pub type SpannedLexeme<'a> = Spanned<Lexeme<'a>>;
 
-impl Lexeme {
+impl<'a> Lexeme<'a> {
   /// Get the character attributed to this lexeme, if applicable, otherwise just
   /// returns `None`.
   pub fn get_char(&self) -> Option<char> {

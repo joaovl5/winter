@@ -30,6 +30,16 @@ macro_rules! ok_some {
   };
 }
 
+#[macro_export]
+macro_rules! span {
+  ($pos_start:expr) => {
+    $crate::types::Span($pos_start, $pos_start)
+  };
+  ($pos_start:expr, $pos_end:expr) => {
+    $crate::types::Span($pos_start as u32, $pos_end as u32)
+  };
+}
+
 /// Encapsulates a `T` by making a [`crate::types::Spanned`] instance.
 ///
 /// - `span_this!(x, obj)` uses `x` for both start and end of the span
@@ -37,10 +47,10 @@ macro_rules! ok_some {
 #[macro_export]
 macro_rules! span_this {
   ($pos_start:expr, $x:expr) => {
-    $crate::types::Spanned($crate::types::Span($pos_start, $pos_start), $x)
+    $crate::types::Spanned($crate::span!($pos_start, $pos_start), $x)
   };
   ($pos_start:expr, $pos_end:expr, $x:expr) => {
-    $crate::types::Spanned($crate::types::Span($pos_start, $pos_end), $x)
+    $crate::types::Spanned($crate::span!($pos_start, $pos_end), $x)
   };
 }
 
@@ -49,13 +59,13 @@ macro_rules! span_this {
 macro_rules! span_err {
   ($pos_start:expr, $err:expr) => {
     return Err($crate::types::SpannedError(
-      $crate::types::Span($pos_start, $pos_start),
+      $crate::span!($pos_start, $pos_start),
       $err,
     ))
   };
   ($pos_start:expr, $pos_end:expr, $err:expr) => {
     return Err($crate::types::SpannedError(
-      $crate::types::Span($pos_start, $pos_end),
+      $crate::span!($pos_start, $pos_end),
       $err,
     ))
   };

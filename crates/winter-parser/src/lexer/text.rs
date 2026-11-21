@@ -1,12 +1,13 @@
 use itertools::Itertools;
+use piping::pipe;
 
-use super::{LexemeResOpt, Lexer};
+use super::{LexemeResOpt, Lexer, LexerRes};
 use crate::lexer::LexerError;
 use crate::types::{Lexeme, LexemeTextualPart};
 use crate::{err, ok_none, ok_some, span_err, span_this};
 
-impl<I: Iterator<Item = char>> Lexer<I> {
-  pub(super) fn parse_textual(&mut self) -> LexemeResOpt {
+impl<'a, I: Iterator<Item = char> + 'a> Lexer<'a, I> {
+  pub(super) fn parse_textual(&mut self) -> LexemeResOpt<'a> {
     self.cur.pos_checkpoint();
     let pos_start = self.pos();
     let mut has_opened = false;
@@ -23,10 +24,11 @@ impl<I: Iterator<Item = char>> Lexer<I> {
           break;
         };
       };
+      let ch_next = self.peek()?;
       if !has_opened {
         match ch {
           | '"' => has_opened = true,
-          | '$' if self.peek()?.is_some_and(|x| x == '"') => is_interp = true,
+          | '$' if ch_next.is_some_and(|x| x == '"') => is_interp = true,
           | 'p' if !is_path => is_path = true,
           | _ => {
             break;
@@ -36,7 +38,11 @@ impl<I: Iterator<Item = char>> Lexer<I> {
       }
       match ch {
         | '"' => {
-          parts.push(LexemeTextualPart::TEXT(current_val.iter().join(" ")));
+          parts.push(pipe! {
+            current_val.iter().join(" ")
+            |> self.alloc.arena.alloc(__)
+            |> LexemeTextualPart::TEXT(__)
+          });
           current_val.clear();
           break;
         },
@@ -44,17 +50,21 @@ impl<I: Iterator<Item = char>> Lexer<I> {
         // since this is effectively nix-specific logic we're encoding at the
         // lexer level
         | '$' => current_val.push("\\$".to_string()),
-        | '\\' => match self.peek()? {
+        | '\\' => match ch_next {
           | None => span_err!(self.pos(), LexerError::UNT_STR_BS),
           | Some(ch) if let Some(bs_val) = get_bs_val(ch) =>
             current_val.push(bs_val.to_string()),
           | Some(ch) => span_err!(self.pos(), LexerError::UNT_STR_BS_SEQ(ch)),
         },
-        | '{' if is_interp => match self.peek()? {
+        | '{' if is_interp => match ch_next {
           | None => span_err!(self.pos(), LexerError::UNT_STR_INTERP),
           | Some('{') => current_val.push("{".to_string()),
           | Some(_) => {
-            parts.push(LexemeTextualPart::TEXT(current_val.iter().join(" ")));
+            parts.push(pipe! {
+              current_val.iter().join(" ")
+              |> self.alloc.arena.alloc(__)
+              |> LexemeTextualPart::TEXT(__)
+            });
             current_val.clear();
             let mut interp_parts = Vec::<Lexeme>::new();
             let mut brace_depth = 1;
@@ -70,12 +80,18 @@ impl<I: Iterator<Item = char>> Lexer<I> {
               if brace_depth == 0 {
                 break;
               }
-              // NOTE: we may remodel things later so parts can be spanned too
+              // NOTE: we may remodel things later so parts are spanned
               interp_parts.push(tk.1);
             }
+            pipe! {
+              interp_parts
+              |> self.alloc.arena.alloc(__)
+              |> LexemeTextualPart::EXPR(__)
+              |> parts.push(__)
+            };
           },
         },
-        | '}' if is_interp => match self.peek()? {
+        | '}' if is_interp => match ch_next {
           | None => span_err!(self.pos(), LexerError::UNT_STR),
           | Some('}') => current_val.push("}".to_string()),
           | Some(_) => span_err!(self.pos(), LexerError::UNEX_STR_INTERP_CLOSE),
@@ -89,8 +105,14 @@ impl<I: Iterator<Item = char>> Lexer<I> {
       ok_none!();
     } else {
       super::map_err(self.pos(), self.cur.pos_commit())?;
-      let lex = Lexeme::VALUE_TEXTUAL { parts, is_path };
-      ok_some!(span_this!(pos_start, pos_end, lex))
+      let lex = Lexeme::VALUE_TEXTUAL {
+        parts: self.alloc.arena.alloc(parts.clone()),
+        is_path,
+      };
+      return Ok(Some(crate::types::Spanned(
+        crate::span!(pos_start, pos_end),
+        lex,
+      )));
     };
   }
 }

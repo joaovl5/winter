@@ -4,7 +4,7 @@ use itertools::Itertools;
 
 /// Span with `START` and `STOP` positions.
 #[derive(Debug)]
-pub struct Span(pub usize, pub usize);
+pub struct Span(pub u32, pub u32);
 #[derive(Debug)]
 pub struct Spanned<T>(pub Span, pub T);
 

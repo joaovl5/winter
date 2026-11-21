@@ -4,7 +4,7 @@ use winter_parser::types::{Lexeme, LexemeTextualPart};
 
 use super::PrettyPrintable;
 
-impl PrettyPrintable for Lexeme {
+impl<'a> PrettyPrintable for Lexeme<'a> {
   type Printable = String;
 
   fn pprint_str(&self) -> StyledObject<String> {
@@ -26,11 +26,13 @@ impl PrettyPrintable for Lexeme {
       | Lexeme::VALUE_ATOM(x)
       | Lexeme::VALUE_NUMBER(x)
       | Lexeme::VALUE_COMMENT(x) => Some(style(x.to_string())),
+      | Lexeme::VALUE_WHITESPACE { kind, count } =>
+        Some(style(format!("{}:{}", kind.as_str(), count))),
       | Lexeme::VALUE_TEXTUAL { parts, .. } => Some(style(
         parts
           .iter()
           .map(|part| match part {
-            | LexemeTextualPart::TEXT(txt) => style(txt.clone()),
+            | LexemeTextualPart::TEXT(txt) => style(txt.to_string()),
             | LexemeTextualPart::EXPR(expr) => style(
               expr
                 .iter()

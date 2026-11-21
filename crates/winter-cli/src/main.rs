@@ -5,6 +5,7 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand, ValueHint};
 use winter_parser::lexer::Lexer;
+use winter_parser::types::WinterAlloc;
 
 use self::pprint::PrettyPrintable;
 
@@ -39,12 +40,9 @@ fn main() -> anyhow::Result<()> {
     | CliCommand::Compile { path } => println!("Compiling {path:?}!"),
     | CliCommand::Lex { path } => {
       let content = fs::read_to_string(path)?.into_chars();
-      let mut lexer = Lexer::new(content);
-      let lexer_iter = lexer.parse();
-      for lex_r in lexer_iter {
-        let Some(lex) = lex_r? else {
-          break;
-        };
+      let alloc = WinterAlloc::new();
+      for lex_r in Lexer::new(content, &alloc).parse() {
+        let lex = lex_r?;
         lex.1.pprint();
       }
     },

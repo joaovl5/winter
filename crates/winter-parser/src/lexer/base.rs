@@ -1,11 +1,17 @@
+use std::iter::FromFn;
 use std::num::NonZero;
 use std::ops::Coroutine;
 use std::str::Chars;
 
+use bumpalo::Bump;
 use itertools::{Itertools, PeekNth, peek_nth};
+use piping::pipe;
+use tracing::debug;
 
 use super::LexerError;
-use crate::types::{Lexeme, Spanned, SpannedError, WhitespaceKind};
+use crate::types::{
+  Lexeme, Spanned, SpannedError, WhitespaceKind, WinterAlloc,
+};
 use crate::utils::Cursor;
 use crate::{ok_none, ok_some, span_err, span_this};
 
@@ -25,8 +31,9 @@ impl LexerByteEncoding {
   }
 }
 
-#[derive(Debug, Clone)]
-pub struct Lexer<I: Iterator<Item = char>> {
+#[derive(Debug)]
+pub struct Lexer<'a, I: Iterator<Item = char> + 'a> {
+  pub(super) alloc:         &'a WinterAlloc,
   pub(super) cur:           Cursor<char, I>,
   pub(super) byte_encoding: LexerByteEncoding,
 }
@@ -39,15 +46,16 @@ fn make_chars<'input>(
 
 pub fn mk_lexer_str_iter<'input>(
   iterator: impl Iterator<Item = &'input str> + 'input,
-) -> Lexer<impl Iterator<Item = char> + 'input> {
-  Lexer::new(make_chars(iterator))
+  alloc: &'input WinterAlloc,
+) -> Lexer<'input, impl Iterator<Item = char> + 'input> {
+  Lexer::new(make_chars(iterator), alloc)
 }
 
-pub type Lex = Spanned<Lexeme>;
+pub type Lex<'a> = Spanned<Lexeme<'a>>;
 pub type LexerRes<T> = Result<T, SpannedError<LexerError>>;
 pub type LexerResOpt<T> = LexerRes<Option<T>>;
-pub type LexemeRes = LexerRes<Lex>;
-pub type LexemeResOpt = LexerResOpt<Lex>;
+pub type LexemeRes<'a> = LexerRes<Lex<'a>>;
+pub type LexemeResOpt<'a> = LexerResOpt<Lex<'a>>;
 
 /// Checks if a returned `Option<T>` is `Some(T)` and, if so, returns early with
 /// an `ok_some!()` call. This can be done repeatedly, for many functions, by
@@ -60,34 +68,29 @@ macro_rules! try_handle {
   };
 }
 
-impl<I: Iterator<Item = char>> Lexer<I> {
-  pub fn new(iter: I) -> Self {
+impl<'a, I: Iterator<Item = char> + 'a> Lexer<'a, I> {
+  pub fn new(iter: I, alloc: &'a WinterAlloc) -> Self {
     Self {
-      cur:           Cursor::new(iter),
+      alloc,
+      cur: Cursor::new(iter),
       // hardcoded for now!
       // TODO: use this
       byte_encoding: LexerByteEncoding::UTF_8,
     }
   }
 
-  pub fn parse(&mut self) -> impl Iterator<Item = LexemeResOpt> {
-    std::iter::from_coroutine(
-      #[coroutine]
-      || {
-        loop {
-          let tk = self.parse_one();
-          let should_stop = tk.as_ref().is_ok_and(|tk_opt| tk_opt.is_none())
-            || tk.as_ref().is_err();
-          yield tk;
-          if should_stop {
-            break;
-          }
-        }
-      },
-    )
+  pub fn parse(mut self) -> FromFn<impl FnMut() -> Option<LexemeRes<'a>>> {
+    std::iter::from_fn(move || {
+      let tk_opt = self.parse_one();
+      match tk_opt {
+        | Ok(None) => None,
+        | Ok(Some(tk)) => Some(Ok(tk)),
+        | Err(err) => Some(Err(err)),
+      }
+    })
   }
 
-  pub(super) fn parse_one(&mut self) -> LexemeResOpt {
+  pub(super) fn parse_one(&mut self) -> LexemeResOpt<'a> {
     try_handle!(
       self.parse_ignored()?,
       self.parse_ellipsis()?,
@@ -97,11 +100,12 @@ impl<I: Iterator<Item = char>> Lexer<I> {
       self.parse_atom()?
     );
 
+    debug!("No more lexemes found, finalized!");
     ok_none!();
   }
 
   // parses hidden/ignored stuff like comments and whitespace
-  fn parse_ignored(&mut self) -> LexemeResOpt {
+  fn parse_ignored(&mut self) -> LexemeResOpt<'a> {
     let Some(ch) = self.peek()? else { ok_none!() };
     let pos_start = self.pos();
     if ch == ';' {
@@ -114,20 +118,25 @@ impl<I: Iterator<Item = char>> Lexer<I> {
           | _ => out.push(ch),
         }
       }
-      ok_some!(span_this!(
-        pos_start,
-        self.pos(),
-        Lexeme::VALUE_COMMENT(String::from_iter(out.iter()))
-      ))
-    } else if ch.is_whitespace() {
+      pipe! {
+        out.iter()
+        |> String::from_iter(__)
+        |> self.alloc.arena.alloc(__)
+        |> Lexeme::VALUE_COMMENT(__)
+        |> ok_some!(span_this!(pos_start, self.pos(), __))
+      }
+    } else if ch.is_ascii_whitespace() {
       self.next()?;
       // NOTE: we only accept tabs or spaces, and whatever other insanities that
-      // unicode supports as whitespace are handled as spaces. we can add an
-      // option to hard-error instead of this silent behavior later
+      // ascii supports as whitespace are handled as spaces. we can add
+      // an option to hard-error instead of this silent behavior later
       let kind = WhitespaceKind::from_char(ch).unwrap_or(WhitespaceKind::SPACE);
       let mut count: NonZero<u8> = unsafe { NonZero::new_unchecked(1) };
       loop {
         let Some(ch_2) = self.peek()? else { break };
+        if !ch_2.is_ascii_whitespace() {
+          break;
+        };
         let ch_2_kind =
           WhitespaceKind::from_char(ch_2).unwrap_or(WhitespaceKind::SPACE);
         if ch_2_kind == kind
@@ -136,6 +145,7 @@ impl<I: Iterator<Item = char>> Lexer<I> {
           self.next()?;
           count = new_count;
         } else {
+          debug!("Breaking whitespace lexeme bc. of u8 overflow");
           break;
         }
       }
@@ -149,7 +159,7 @@ impl<I: Iterator<Item = char>> Lexer<I> {
     };
   }
 
-  fn parse_ellipsis(&mut self) -> LexemeResOpt {
+  fn parse_ellipsis(&mut self) -> LexemeResOpt<'a> {
     if !self.starts_with("...") {
       ok_none!();
     }
@@ -161,11 +171,12 @@ impl<I: Iterator<Item = char>> Lexer<I> {
     ok_some!(span_this!(self.pos() - 3, self.pos(), Lexeme::ELLIPSIS));
   }
 
-  pub(super) fn parse_single_char(&mut self) -> LexemeResOpt {
+  pub(super) fn parse_single_char(&mut self) -> LexemeResOpt<'a> {
     let Some(ch) = self.peek()? else { ok_none!() };
     if let Some(lx) = Lexeme::from_char(ch) {
+      let pos = self.pos();
       self.next()?;
-      ok_some!(span_this!(self.pos(), lx));
+      ok_some!(span_this!(pos, lx));
     }
     ok_none!();
   }

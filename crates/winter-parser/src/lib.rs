@@ -4,5 +4,6 @@
 
 pub mod lexer;
 pub(crate) mod macros;
+pub mod parser;
 pub mod types;
 pub mod utils;

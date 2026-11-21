@@ -1,11 +1,12 @@
 use itertools::Itertools;
+use piping::pipe;
 
 use super::{LexemeResOpt, Lexer};
 use crate::types::Lexeme;
 use crate::{ok_none, ok_some, span_this};
 
-impl<I: Iterator<Item = char>> Lexer<I> {
-  pub(super) fn parse_atom(&mut self) -> LexemeResOpt {
+impl<'a, I: Iterator<Item = char> + 'a> Lexer<'a, I> {
+  pub(super) fn parse_atom(&mut self) -> LexemeResOpt<'a> {
     let pos_start = self.pos();
     let mut parts = Vec::<char>::new();
     while let Some(ch) = self.peek()? {
@@ -18,8 +19,12 @@ impl<I: Iterator<Item = char>> Lexer<I> {
     if parts.is_empty() {
       ok_none!();
     } else {
-      let lex = Lexeme::VALUE_ATOM(parts.iter().join(""));
-      ok_some!(span_this!(pos_start, self.pos(), lex));
+      pipe! {
+        parts.iter().join("")
+        |> self.alloc.arena.alloc(__)
+        |> Lexeme::VALUE_ATOM(__)
+        |> ok_some!(span_this!(pos_start, self.pos(), __))
+      }
     }
   }
 }
