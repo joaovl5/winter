@@ -1,211 +1,215 @@
-use std::iter::FromFn;
-use std::num::NonZero;
-use std::ops::Coroutine;
-use std::str::Chars;
+use strum_macros::Display;
 
-use bumpalo::Bump;
-use itertools::{Itertools, PeekNth, peek_nth};
-use piping::pipe;
-use tracing::debug;
+pub type Lexer<'a> = logos::Lexer<'a, NormalToken<'a>>;
 
-use super::LexerError;
-use crate::types::{
-  Lexeme, Spanned, SpannedError, WhitespaceKind, WinterAlloc,
-};
-use crate::utils::Cursor;
-use crate::{ok_none, ok_some, span_err, span_this};
+#[derive(logos::Logos, Debug, PartialEq, Clone, Display)]
+#[logos(skip "((\r\n)+|[ \t\n]+)")]
+pub enum NormalToken<'a> {
+  // ## Start/stop tokens
+  #[token("(")]
+  START_PAREN,
+  #[token("[")]
+  START_SQUARE_BRACKET,
+  #[token("{")]
+  START_CURLY_BRACE,
+  #[token(")")]
+  CLOSE_PAREN,
+  #[token("]")]
+  CLOSE_SQUARE_BRACKET,
+  #[token("}")]
+  CLOSE_CURLY_BRACE,
 
-/// Determines which byte encoding to use for getting character lengths.
-#[derive(Debug, Clone)]
-pub enum LexerByteEncoding {
-  UTF_8,
-  UTF_16,
+  // ## Symbols
+  #[token("`")]
+  SYM_BACKTICK,
+  #[token(",")]
+  SYM_COMMA,
+  #[token(".")]
+  SYM_DOT,
+  #[token("...")]
+  SYM_ELLIPSIS,
+  #[token("@")]
+  SYM_AT,
+  #[token("!")]
+  SYM_BANG,
+  #[token("#")]
+  SYM_HASH,
+  #[token("?")]
+  SYM_QUESTION,
+
+  #[token("+")]
+  SYM_PLUS,
+  #[token("++")]
+  SYM_DOUBLE_PLUS,
+  #[token("-")]
+  SYM_MINUS,
+  #[token("*")]
+  SYM_STAR,
+  #[token("/")]
+  SYM_SLASH,
+  #[token("//")]
+  SYM_DOUBLE_SLASH,
+
+  #[token(">")]
+  SYM_GT,
+  #[token(">=")]
+  SYM_GTE,
+  #[token("<")]
+  SYM_LT,
+  #[token("<=")]
+  SYM_LTE,
+
+  #[token("=")]
+  SYM_EQ,
+  #[token("!=")]
+  SYM_NEQ,
+  #[token("&&")]
+  SYM_BOOL_AND,
+  #[token("||")]
+  SYM_BOOL_OR,
+  #[token("->")]
+  SYM_IMPLIES,
+  #[token("or")]
+  SYM_REC_OR,
+  #[token("has")]
+  SYM_REC_HAS,
+
+  #[token("|>")]
+  SYM_PIPE_RIGHT,
+  #[token("<|")]
+  SYM_PIPE_LEFT,
+
+  // ## Keywords
+  // ### General Keywords
+  #[token("inherit")]
+  KW_INHERIT,
+  #[token("locals")]
+  KW_LOCALS,
+  #[token("let")]
+  KW_LET,
+  #[token("fn")]
+  KW_FN,
+  #[token("type")]
+  KW_TYPE,
+  #[token("namespace")]
+  KW_NAMESPACE,
+  #[token("namespace-use")]
+  KW_NAMESPACE_USE,
+  #[token("as")]
+  KW_AS,
+  #[token("IF")]
+  KW_IF,
+
+  // ### Type Keywords
+  #[token("nil")]
+  KW_NIL,
+  #[token("bool")]
+  KW_BOOL,
+  #[token("str")]
+  KW_STR,
+  #[token("path")]
+  KW_PATH,
+  #[token("list")]
+  KW_LIST,
+  #[token("record")]
+  KW_RECORD,
+  #[token("expr")]
+  KW_EXPR,
+  #[token("forall")]
+  KW_FORALL,
+
+  // ### Macro/compile-time (CT) Keywords
+  #[token("!macro")]
+  KW_CT_MACRO,
+  #[token("!expr")]
+  KW_CT_EXPR,
+  #[token("!first")]
+  KW_CT_FIRST,
+  #[token("!second")]
+  KW_CT_SECOND,
+  #[token("!last")]
+  KW_CT_LAST,
+  #[token("!tail")]
+  KW_CT_TAIL,
+  #[token("!unpack")]
+  KW_CT_UNPACK,
+  #[token("!gensym")]
+  KW_CT_GENSYM,
+
+  // ## Values
+  #[regex("_*[a-zA-Z][_a-zA-Z0-9-']*")]
+  VALUE_ATOM(&'a str),
+  #[regex(r#"[0-9](\.[0-9]+)?"#)]
+  VALUE_NUMBER(&'a str),
+  #[token("\"", handle_textual)]
+  VALUE_STRING(Vec<TextualToken<'a>>),
+  #[token("p\"", handle_textual)]
+  VALUE_PATH(Vec<TextualToken<'a>>),
+
+  // ## Comments
+  #[regex(";\\.[^\n]*", allow_greedy = true)]
+  COMMENT_DOC(&'a str),
+  #[regex(";[^\n]*", allow_greedy = true)]
+  COMMENT_NORMAL(&'a str),
+  // the parser itself will have to consume/ignore the block, logos doesn't
+  // have the regex support to allow the `;_(\((?>[^()]*|(?1))*\))` regex
+  #[token(";_")]
+  COMMENT_FORM(&'a str),
 }
 
-impl LexerByteEncoding {
-  fn get_char_len(&self, char: &char) -> usize {
-    match self {
-      | Self::UTF_8 => char.len_utf8(),
-      | Self::UTF_16 => char.len_utf16(),
+#[derive(logos::Logos, Debug, PartialEq, Clone)]
+pub enum TextualToken<'a> {
+  #[token("\"")]
+  DOUBLE_QUOTE,
+
+  #[regex("[^\"$\\\\]+")]
+  #[token("$")]
+  LITERAL(&'a str),
+
+  #[token("${", handle_interpolation)]
+  INTERPOLATION(Vec<NormalToken<'a>>),
+  // TODO: ESCAPED CHARS
+}
+
+fn handle_textual<'a>(
+  lex: &mut logos::Lexer<'a, NormalToken<'a>>,
+) -> Option<Vec<TextualToken<'a>>> {
+  let mut textual_lexer = lex.clone().morph::<TextualToken<'a>>();
+  let mut tokens = Vec::<TextualToken<'a>>::new();
+  for tk in textual_lexer.by_ref() {
+    match tk {
+      | Ok(TextualToken::DOUBLE_QUOTE) => break,
+      | Err(_) => return None,
+      | Ok(tk_value) => tokens.push(tk_value),
     }
   }
+  *lex = textual_lexer.morph();
+
+  Some(tokens)
 }
 
-#[derive(Debug)]
-pub struct Lexer<'a, I: Iterator<Item = char> + 'a> {
-  pub(super) alloc:         &'a WinterAlloc,
-  pub(super) cur:           Cursor<char, I>,
-  pub(super) byte_encoding: LexerByteEncoding,
-}
-
-fn make_chars<'input>(
-  iter: impl Iterator<Item = &'input str> + 'input,
-) -> PeekNth<impl Iterator<Item = char> + 'input> {
-  peek_nth(iter.flat_map(str::chars))
-}
-
-pub fn mk_lexer_str_iter<'input>(
-  iterator: impl Iterator<Item = &'input str> + 'input,
-  alloc: &'input WinterAlloc,
-) -> Lexer<'input, impl Iterator<Item = char> + 'input> {
-  Lexer::new(make_chars(iterator), alloc)
-}
-
-pub type Lex<'a> = Spanned<Lexeme<'a>>;
-pub type LexerRes<T> = Result<T, SpannedError<LexerError>>;
-pub type LexerResOpt<T> = LexerRes<Option<T>>;
-pub type LexemeRes<'a> = LexerRes<Lex<'a>>;
-pub type LexemeResOpt<'a> = LexerResOpt<Lex<'a>>;
-
-/// Checks if a returned `Option<T>` is `Some(T)` and, if so, returns early with
-/// an `ok_some!()` call. This can be done repeatedly, for many functions, by
-/// using more arguments to the macro.
-macro_rules! try_handle {
-  ($($x:expr),+) => {
-    $(if let Some(tk) = $x {
-      ok_some!(tk);
-    })+
-  };
-}
-
-impl<'a, I: Iterator<Item = char> + 'a> Lexer<'a, I> {
-  pub fn new(iter: I, alloc: &'a WinterAlloc) -> Self {
-    Self {
-      alloc,
-      cur: Cursor::new(iter),
-      // hardcoded for now!
-      // TODO: use this
-      byte_encoding: LexerByteEncoding::UTF_8,
-    }
-  }
-
-  pub fn parse(mut self) -> FromFn<impl FnMut() -> Option<LexemeRes<'a>>> {
-    std::iter::from_fn(move || {
-      let tk_opt = self.parse_one();
-      match tk_opt {
-        | Ok(None) => None,
-        | Ok(Some(tk)) => Some(Ok(tk)),
-        | Err(err) => Some(Err(err)),
-      }
-    })
-  }
-
-  pub(super) fn parse_one(&mut self) -> LexemeResOpt<'a> {
-    try_handle!(
-      self.parse_ignored()?,
-      self.parse_ellipsis()?,
-      self.parse_single_char()?,
-      self.parse_textual()?,
-      self.parse_number()?,
-      self.parse_atom()?
-    );
-
-    debug!("No more lexemes found, finalized!");
-    ok_none!();
-  }
-
-  // parses hidden/ignored stuff like comments and whitespace
-  fn parse_ignored(&mut self) -> LexemeResOpt<'a> {
-    let Some(ch) = self.peek()? else { ok_none!() };
-    let pos_start = self.pos();
-    if ch == ';' {
-      self.next()?;
-      let mut out = Vec::<char>::new();
-      loop {
-        let Some(ch) = self.next()? else { break };
-        match ch {
-          | '\n' => break,
-          | _ => out.push(ch),
+fn handle_interpolation<'a>(
+  lex: &mut logos::Lexer<'a, TextualToken<'a>>,
+) -> Option<Vec<NormalToken<'a>>> {
+  let mut normal_lexer = lex.clone().morph::<NormalToken<'a>>();
+  let mut tokens = Vec::<NormalToken<'a>>::new();
+  let mut brace_depth = 1;
+  for tk in normal_lexer.by_ref() {
+    match tk {
+      | Ok(NormalToken::CLOSE_CURLY_BRACE) if brace_depth == 1 => break,
+      | Err(_) => return None,
+      | Ok(tk_value) => {
+        if tk_value == NormalToken::START_CURLY_BRACE {
+          brace_depth += 1;
+        } else if tk_value == NormalToken::CLOSE_CURLY_BRACE {
+          brace_depth -= 1;
         }
-      }
-      pipe! {
-        out.iter()
-        |> String::from_iter(__)
-        |> self.alloc.arena.alloc(__)
-        |> Lexeme::VALUE_COMMENT(__)
-        |> ok_some!(span_this!(pos_start, self.pos(), __))
-      }
-    } else if ch.is_ascii_whitespace() {
-      self.next()?;
-      // NOTE: we only accept tabs or spaces, and whatever other insanities that
-      // ascii supports as whitespace are handled as spaces. we can add
-      // an option to hard-error instead of this silent behavior later
-      let kind = WhitespaceKind::from_char(ch).unwrap_or(WhitespaceKind::SPACE);
-      let mut count: NonZero<u8> = unsafe { NonZero::new_unchecked(1) };
-      loop {
-        let Some(ch_2) = self.peek()? else { break };
-        if !ch_2.is_ascii_whitespace() {
-          break;
-        };
-        let ch_2_kind =
-          WhitespaceKind::from_char(ch_2).unwrap_or(WhitespaceKind::SPACE);
-        if ch_2_kind == kind
-          && let Some(new_count) = count.checked_add(1)
-        {
-          self.next()?;
-          count = new_count;
-        } else {
-          debug!("Breaking whitespace lexeme bc. of u8 overflow");
-          break;
-        }
-      }
-      ok_some!(span_this!(
-        pos_start,
-        self.pos(),
-        Lexeme::VALUE_WHITESPACE { kind, count }
-      ))
-    } else {
-      ok_none!();
-    };
-  }
 
-  fn parse_ellipsis(&mut self) -> LexemeResOpt<'a> {
-    if !self.starts_with("...") {
-      ok_none!();
+        tokens.push(tk_value)
+      },
     }
-    const THREE_IS_NOT_ZERO_TRUST_ME_BRO: NonZero<usize> =
-      NonZero::new(3usize).unwrap();
-    let x = self
-      .cur
-      .advance_by(THREE_IS_NOT_ZERO_TRUST_ME_BRO);
-    ok_some!(span_this!(self.pos() - 3, self.pos(), Lexeme::ELLIPSIS));
   }
+  *lex = normal_lexer.morph();
 
-  pub(super) fn parse_single_char(&mut self) -> LexemeResOpt<'a> {
-    let Some(ch) = self.peek()? else { ok_none!() };
-    if let Some(lx) = Lexeme::from_char(ch) {
-      let pos = self.pos();
-      self.next()?;
-      ok_some!(span_this!(pos, lx));
-    }
-    ok_none!();
-  }
-
-  pub(super) fn peek(&mut self) -> LexerResOpt<char> {
-    map_err(self.pos(), self.cur.peek())
-  }
-
-  pub(super) fn next(&mut self) -> LexerResOpt<char> {
-    map_err(self.pos(), self.cur.next())
-  }
-
-  pub(super) fn pos(&self) -> usize {
-    self.cur.pos
-  }
-
-  pub(super) fn starts_with(&mut self, s: &str) -> bool {
-    s.chars()
-      .enumerate()
-      .all(|(i, c)| self.cur.peek_nth(i).is_ok_and(|x| x == Some(c)))
-  }
-}
-
-pub(super) fn map_err<T, Err: std::error::Error + Send + Sync + 'static>(
-  pos: usize,
-  res: Result<T, Err>,
-) -> LexerRes<T> {
-  match res {
-    | Ok(x) => Ok(x),
-    | Err(err) => span_err!(pos, LexerError::other(err)),
-  }
+  Some(tokens)
 }

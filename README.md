@@ -36,3 +36,9 @@ Winter
 - [ ] [Requirements/Namespaces System](./docs/spec.md#requirements-and-namespaces-system)
 - [ ] [Documentation Comments](./docs/spec.md#documentation-comments)
 - [ ] [Generic Types](./docs/spec.md#generics)
+
+## Credits
+
+- [nickel-lang/nickel](https://github.com/nickel-lang/nickel) for much
+  of the basis that was used to write the internals of the language
+  such as the lexer and parser.

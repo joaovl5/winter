@@ -1,8 +1,8 @@
-#![feature(string_into_chars)]
-
+#![allow(unused)]
 use std::fs;
 use std::path::PathBuf;
 
+use anyhow::bail;
 use clap::{Parser, Subcommand, ValueHint};
 use winter_parser::lexer::Lexer;
 use winter_parser::types::WinterAlloc;
@@ -39,12 +39,18 @@ fn main() -> anyhow::Result<()> {
   match args.command {
     | CliCommand::Compile { path } => println!("Compiling {path:?}!"),
     | CliCommand::Lex { path } => {
-      let content = fs::read_to_string(path)?.into_chars();
-      let alloc = WinterAlloc::new();
-      for lex_r in Lexer::new(content, &alloc).parse() {
-        let lex = lex_r?;
-        lex.1.pprint();
+      let content = fs::read_to_string(path.clone())?;
+      println!("\n-- Lexing {path:?} --\n");
+      // let alloc = WinterAlloc::new();
+      let lexer = Lexer::new(&content);
+      for (lex_r, _lex_span) in lexer.spanned() {
+        let Ok(lex) = lex_r else {
+          println!("\nLexer failed!");
+          break;
+        };
+        print!("{} ", lex);
       }
+      println!();
     },
   }
 

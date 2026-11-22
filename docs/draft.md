@@ -75,6 +75,12 @@ this feature.
 
 #### String Interpolation
 
+String interp feels like the same as in Nix, e.g.: `"foo ${bar}"`.
+However, in contrast to Nix, Winter allows escaping with `\${bar}`
+even in multiline strings, since in Winter all strings can be
+multiline, but compile-down to regular strings by default that are
+joined with `\n` (see [`StringTactic`](#winterwin-file).)
+
 ### Compound Data Types
 
 - `list`
@@ -242,7 +248,8 @@ Internally, the `WinterConfig` type is like:
 ;. Schema for the `winter.win` configuration file.
 (type WinterConfig
       {(path src-directory)
-       ()})
+       (PipeOpTactic pipe-op-tactic)
+       (StringTactic string-tactic)})
 
 ;. Manages how to handle pipe operators when compiling to Nix.
 (type PipeOpTactic
