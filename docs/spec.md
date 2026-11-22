@@ -65,10 +65,10 @@
 #### Pipe Operators
 
 >[!WARNING]
->the function operators below, known as *pipe operators* are not included by
->default in the Nix language for most evaluators, and thus if you mean to use
->them you should certify they're enabled as an experimental option to avoid
->issues, follow
+>the function operators below, known as *pipe operators* are not
+>included by default in the Nix language for most evaluators, and thus
+>if you mean to use them you should certify they're enabled as an
+>experimental option to avoid issues, follow
 >[this link](https://nix.dev/manual/nix/2.26/development/experimental-features#xp-feature-pipe-operators)
 >for more info.
 
@@ -134,9 +134,9 @@
   - Thus, with the `!` syntax, keys may be of any value that can
     become a string, and will only actually become strings once they
     get compiled-down into Nix code
-    - The `!` key is not necessarily equivalent to a Nix dynamic string attr
-      like `${value}` - if this is needed, use string interpolations
-      like `$"{value}"`
+    - The `!` key is not necessarily equivalent to a Nix dynamic
+      string attr like `${value}` - if this is needed, use string
+      interpolations like `$"{value}"`
     - This is because the `!` will attempt handling an expression at
       compile-time, and thus any evaluation-time logic required cannot
       be garanteed by using it
@@ -189,8 +189,8 @@ Under the hood, `locals` will be compiled down to a `let` call in Nix
 based on the scope:
 
 - bindings from a `(locals)` call must precede all of its consumers
-- consumers must be in the same scope, or a nested scope as the `(locals)`
-  call
+- consumers must be in the same scope, or a nested scope as the
+  `(locals)` call
 - a `let` will be generated, based on these rules, for encompassing
   the siblings which the `locals` call precedes.
 
@@ -244,9 +244,9 @@ Thus, inherit will differ in behavior depending on its placement:
 
 - when inside a `map` - will resolve to an `inherit` inside that
   map/attrset
-- when inside a `list` - will replace the need for `with` blocks but *won't*
-  use them when compiling into Nix - it will, instead, perform namespace
-  prefixing like so:
+- when inside a `list` - will replace the need for `with` blocks but
+  *won't* use them when compiling into Nix - it will, instead, perform
+  namespace prefixing like so:
 
   ```clojure
   [my_custom_pkg
@@ -266,11 +266,11 @@ Thus, inherit will differ in behavior depending on its placement:
   ]
   ```
 
-  It should be noted that ordering of items that use inherit will not be
-  preserved at this point - it is not a priority to refactor for
+  It should be noted that ordering of items that use inherit will not
+  be preserved at this point - it is not a priority to refactor for
   fixing this, thus if you have a use-case that would warrant
-  order-aware inherits in lists, let me know by opening an issue so
-  I become aware of this need.
+  order-aware inherits in lists, let me know by opening an issue so I
+  become aware of this need.
 
 - if used in a `let` - will resolve to an `inherit` inside that `let`
   block
@@ -289,9 +289,9 @@ inherited from:
   namespace itself: to differ between what would be a
   `inherit (abc) xyz` and an `inherit abc xyz`
   - is the usage of parentheses as seen below
-  - *(using parentheses will imply the items within the form wrapped in
-    parentheses will be inherited from the namespace identified by the
-    preceding form)*
+  - *(using parentheses will imply the items within the form wrapped
+    in parentheses will be inherited from the namespace identified by
+    the preceding form)*
 
 ```clojure
 ; on its own:
@@ -499,8 +499,8 @@ map respectively)*
 
 #### Functions
 
-Functions type annotations take the form of `fn@(X Y)` where `X` is
-a list of types for every positional parameter of the function, and `Y`
+Functions type annotations take the form of `fn@(X Y)` where `X` is a
+list of types for every positional parameter of the function, and `Y`
 is the return type.
 
 ```clojure
@@ -638,7 +638,8 @@ Maps identifiers to typed values
   a sequence, where `x` will be:
   - for maps, a sequence like `(k v)`
   - for lists, plainly a value of the list `v`
-- `first` - roughly equivalent to `car` - takes first form of a sequence
+- `first` - roughly equivalent to `car` - takes first form of a
+  sequence
   - for `(k v)` will take `k`
   - for `["x" "z" "w"]` will take `"x"`
   - for `{x 0 y 1 z 2}` will take `(x 0)`

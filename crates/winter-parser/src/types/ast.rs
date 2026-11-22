@@ -17,9 +17,9 @@ pub enum Node<'a> {
   },
   LIST(&'a [Node<'a>]),
   SELECTION(&'a [Node<'a>]),
-  MAP {
+  RECORD {
     inherits: &'a [InheritBind<'a>],
-    binds:    &'a [MapBind<'a>],
+    binds:    &'a [RecordBind<'a>],
   },
   INHERITS {
     inherits: &'a [InheritBind<'a>],
@@ -71,6 +71,21 @@ pub enum CallableHead<'a> {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+pub struct IfCase<'a> {
+  cond:  Node<'a>,
+  value: Node<'a>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct If<'a> {
+  /// Multiple cases will unwrap into nested if-else statements, with the last
+  /// case, i.e. `case_else`, reserved as the fallback since expressions must
+  /// always have a value.
+  cases:     &'a [IfCase<'a>],
+  case_else: Node<'a>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
 pub struct TypeArgument<'a> {
   name:    &'a str,
   default: Option<TypeAnnotation<'a>>,
@@ -79,9 +94,14 @@ pub struct TypeArgument<'a> {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum DeclaredTypeKind<'a> {
+  /// No type payload, just a marker - i.e. creates a type with exactly one
+  /// value that is different from "null". May be used internally to represent
+  /// tagged-union variants that don't have payloads.
+  EMPTY,
   /// Creates a NewType from a type construction.
   NEW_TYPE(TypeAnnotation<'a>),
   ATTRIBUTES(&'a [TypedReference<'a>]),
+  TAGGED_UNION(&'a [(&'a str, DeclaredTypeKind<'a>)]),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -111,10 +131,10 @@ pub enum TypeAnnotation<'a> {
   ///
   /// - list intersections are equivalent to "narrowing down" the type, e.g.:
   ///   `list<Any> & list<str>` is `list<str>`
-  /// - map-based intersections join fields from both types, failing if there is
-  ///   no reconciliation available
+  /// - record-based intersections join fields from both types, failing if there
+  ///   is no reconciliation available
   INTERSECTION(&'a [TypeAnnotation<'a>]),
-  MAP {
+  RECORD {
     key_type:   &'a TypeAnnotation<'a>,
     value_type: &'a TypeAnnotation<'a>,
   },
@@ -179,7 +199,7 @@ pub struct UnwrappedParam<'a>(pub TypedReference<'a>, pub Option<Node<'a>>);
 pub struct RegularBind<'a>(pub TypedReference<'a>, pub Node<'a>);
 
 #[derive(Debug, PartialEq, Eq, From, Into)]
-pub struct MapBind<'a>(pub Vec<Node<'a>>, pub Node<'a>);
+pub struct RecordBind<'a>(pub Vec<Node<'a>>, pub Node<'a>);
 
 #[derive(Debug, PartialEq, Eq, From, Into)]
 pub struct InheritBind<'a>(pub &'a str, pub Option<Vec<TypedReference<'a>>>);

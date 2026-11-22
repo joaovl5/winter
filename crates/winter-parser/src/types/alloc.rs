@@ -1,6 +1,6 @@
 use bumpalo::Bump;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct WinterAlloc {
   pub arena: Bump,
 }

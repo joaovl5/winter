@@ -12,7 +12,7 @@
   disable           = ["MD033", "MD041"]
 
 [MD013]
-  line-length = 80
+  line-length = 70
   code-blocks = false
   tables      = false
   headings    = false
