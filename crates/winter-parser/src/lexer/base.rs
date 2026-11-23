@@ -97,8 +97,10 @@ pub enum NormalToken<'a> {
   KW_NAMESPACE_USE,
   #[token("as")]
   KW_AS,
-  #[token("IF")]
+  #[token("if")]
   KW_IF,
+  #[token("match")]
+  KW_MATCH,
 
   // ### Type Keywords
   #[token("nil")]
@@ -137,7 +139,7 @@ pub enum NormalToken<'a> {
   KW_CT_GENSYM,
 
   // ## Values
-  #[regex("_*[a-zA-Z][_a-zA-Z0-9-']*")]
+  #[regex("(@)?_*[a-zA-Z][_a-zA-Z0-9-']*", handle_atom)]
   VALUE_ATOM(&'a str),
   #[regex(r#"[0-9](\.[0-9]+)?"#)]
   VALUE_NUMBER(&'a str),
@@ -169,6 +171,16 @@ pub enum TextualToken<'a> {
   #[token("${", handle_interpolation)]
   INTERPOLATION(Vec<NormalToken<'a>>),
   // TODO: ESCAPED CHARS
+}
+
+fn handle_atom<'a>(
+  lex: &mut logos::Lexer<'a, NormalToken<'a>>,
+) -> Option<&'a str> {
+  let out = lex.slice();
+  match out.strip_prefix('@') {
+    | Some(x) => Some(x),
+    | None => Some(out),
+  }
 }
 
 fn handle_textual<'a>(

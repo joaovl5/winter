@@ -48,7 +48,7 @@ fn main() -> anyhow::Result<()> {
           println!("\nLexer failed!");
           break;
         };
-        print!("{} ", lex);
+        print!("{:?} ", lex);
       }
       println!();
     },
