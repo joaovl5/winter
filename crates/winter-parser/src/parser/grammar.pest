@@ -1,5 +1,7 @@
 WHITESPACE	= _{ " " | "\t" | "\r" | NEWLINE }
 
+file = { node* }
+
 node	= {
 | sym
 | kw
@@ -269,17 +271,18 @@ dotted_binding	= { (dotted_path ~ node)
 dotted_path	= { dotted_path_part ~ ("." ~ dotted_path_part)* }
 dotted_path_part	= { ident | string | string_part_interp }
 
-start_paren	= {"("}
-close_paren	= {")"}
-start_bracket	= {"["}
-close_bracket	= {"]"}
-start_brace	= {"{"}
-close_brace	= {"}"}
+start_paren	= _{"("}
+close_paren	= _{")"}
+start_bracket	= _{"["}
+close_bracket	= _{"]"}
+start_brace	= _{"{"}
+close_brace	= _{"}"}
 
 // ## Comments
 
 COMMENT	= { comment_block | comment_doc | comment_normal }
 
-comment_block	= {";_" ~ (node | EOI)} // TODO: THIS
+// TODO: FIX COMMENTS THEY BREAK THE THING
+comment_block	= {";_" ~ (node | EOI)}
 comment_doc	= {";." ~ (!NEWLINE ~ ANY)* ~ (NEWLINE | EOI)}
 comment_normal	= {";" ~ (!NEWLINE ~ ANY)* ~ (NEWLINE | EOI)}

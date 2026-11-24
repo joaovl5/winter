@@ -98,6 +98,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ab387a0c4143b4fd3804e193946e78c8ab16cf26c5fde2048e4ac3d618c3b64"
 
 [[package]]
+name = "ascii_tree"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ca6c635b3aa665c649ad1415f1573c85957dfa47690ec27aebe7ec17efe3c643"
+
+[[package]]
 name = "backtrace"
 version = "0.3.77"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -325,6 +331,12 @@ dependencies = [
  "libc",
  "windows-sys",
 ]
+
+[[package]]
+name = "escape_string"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "59e867569975c88fdf73833a30bd6e0978aa6ab6bd784b648fcece07450951ba"
 
 [[package]]
 name = "find-msvc-tools"
@@ -691,6 +703,18 @@ dependencies = [
  "serde",
  "serde_json",
  "ucd-trie",
+]
+
+[[package]]
+name = "pest_ascii_tree"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4152b393638a9816cd3dedb5aea2fb60ab0b641315aa133cea219c8797e768fc"
+dependencies = [
+ "ascii_tree",
+ "escape_string",
+ "pest",
+ "pest_derive",
 ]
 
 [[package]]
@@ -1467,6 +1491,7 @@ dependencies = [
  "console",
  "human-panic",
  "itertools",
+ "pest_ascii_tree",
  "time",
  "tracing-subscriber",
  "winter-parser",

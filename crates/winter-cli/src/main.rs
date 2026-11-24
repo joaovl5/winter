@@ -1,16 +1,11 @@
-#![allow(unused)]
 use std::fs;
 use std::path::PathBuf;
 
-use anyhow::bail;
 use clap::{Parser, Subcommand, ValueHint};
-use winter_parser::lexer::Lexer;
+use winter_parser::parser::WinterParser;
 use winter_parser::types::WinterAlloc;
 
-use self::pprint::PrettyPrintable;
-
 mod logging;
-mod pprint;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -41,16 +36,10 @@ fn main() -> anyhow::Result<()> {
     | CliCommand::Lex { path } => {
       let content = fs::read_to_string(path.clone())?;
       println!("\n-- Lexing {path:?} --\n");
-      // let alloc = WinterAlloc::new();
-      let lexer = Lexer::new(&content);
-      for (lex_r, _lex_span) in lexer.spanned() {
-        let Ok(lex) = lex_r else {
-          println!("\nLexer failed!");
-          break;
-        };
-        print!("{:?} ", lex);
-      }
-      println!();
+      let _alloc = WinterAlloc::new();
+
+      let parse_result = WinterParser::parse(&content);
+      pest_ascii_tree::print_ascii_tree(parse_result);
     },
   }
 
