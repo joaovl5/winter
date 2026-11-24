@@ -9,6 +9,7 @@
     alejandra
     rumdl
     tombi
+    pest-ide-tools
 
     just
   ];

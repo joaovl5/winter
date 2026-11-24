@@ -1,0 +1,285 @@
+WHITESPACE	= _{ " " | "\t" | "\r" | NEWLINE }
+
+node	= {
+| sym
+| kw
+| ident
+| number
+| path
+| string
+| form
+}
+
+
+sym = {
+| sym_backtick
+| sym_comma
+| sym_ellipsis
+| sym_dot
+| sym_at
+| sym_bang
+| sym_hash
+| sym_question
+| sym_double_plus
+| sym_plus
+| sym_minus
+| sym_star
+| sym_double_slash
+| sym_slash
+| sym_gt
+| sym_gte
+| sym_lt
+| sym_lte
+| sym_eq
+| sym_neq
+| sym_pipe_right
+| sym_pipe_left
+}
+
+sym_backtick	= {"`"}
+sym_comma	= {","}
+sym_ellipsis	= {"..."}
+sym_dot	= {"."}
+sym_at	= {"@"}
+sym_bang	= {"!"}
+sym_hash	= {"#"}
+sym_question	= {"?"}
+sym_double_plus	= {"++"}
+sym_plus	= {"+"}
+sym_minus	= {"-"}
+sym_star	= {"*"}
+sym_double_slash	= {"//"}
+sym_slash	= {"/"}
+sym_gt	= {">"}
+sym_gte	= {">="}
+sym_lt	= {"<"}
+sym_lte	= {"<="}
+sym_eq	= {"="}
+sym_neq	= {"!="}
+sym_pipe_right	= {"|>"}
+sym_pipe_left	= {"<|"}
+
+// ## Keywords
+kw = {
+| kw_inherit
+| kw_locals
+| kw_let
+| kw_fn
+| kw_type
+| kw_namespace
+| kw_namespace_use
+| kw_as
+| kw_if
+| kw_match
+| kw_nil
+| kw_bool
+| kw_str
+| kw_path
+| kw_list
+| kw_record
+| kw_expr
+| kw_forall
+| kw_has
+| kw_or
+| kw_true
+| kw_false
+| kw_ct
+}
+kw_ct = {
+| kw_ct_macro
+| kw_ct_expr
+| kw_ct_first
+| kw_ct_second
+| kw_ct_last
+| kw_ct_tail
+| kw_ct_unpack
+| kw_ct_gensym
+}
+
+// ### General Keywords
+kw_inherit	= {"inherit"}
+kw_locals	= {"locals"}
+kw_let	= {"let"}
+kw_fn	= {"fn"}
+kw_type	= {"type"}
+kw_namespace	= {"namespace"}
+kw_namespace_use	= {"namespace-use"}
+kw_as	= {"as"}
+kw_if	= {"if"}
+kw_match	= {"match"}
+kw_has	= {"has"}
+kw_or	= {"or"}
+
+// ### Type Keywords
+kw_nil	= {"nil"}
+kw_bool	= {"bool"}
+kw_true	= {"true"}
+kw_false	= {"false"}
+kw_str	= {"str"}
+kw_path	= {"path"}
+kw_list	= {"list"}
+kw_record	= {"record"}
+kw_expr	= {"expr"}
+kw_forall	= {"forall"}
+
+// ### Compile-time/Meta-programming Keywords
+kw_ct_macro	= {"!macro"}
+kw_ct_expr	= {"!expr"}
+kw_ct_first	= {"!first"}
+kw_ct_second	= {"!second"}
+kw_ct_last	= {"!last"}
+kw_ct_tail	= {"!tail"}
+kw_ct_unpack	= {"!unpack"}
+kw_ct_gensym	= {"!gensym"}
+
+// ## Values
+
+ident	= {
+| ident_gensym
+| ident_normal
+| ident_raw
+}
+
+ident_normal	= @{ (ASCII_ALPHA | "_")
+	   ~ (ASCII_ALPHANUMERIC | "'" | "_")* }
+ident_raw	= { "@" ~ ident_normal }
+ident_gensym	= { (ident_normal | ident_raw) ~ "#" }
+
+number	= @{ ("-")? ~ ASCII_DIGIT+ ~ (ASCII_DIGIT+)? }
+
+path	= { "p" ~ string }
+string	= { "\"" ~ string_part* ~ "\"" }
+string_part	= { string_part_literal | string_part_interp }
+string_part_literal = @{ string_char+ }
+string_char	= { !("\"" | "\\" | "${") ~ ANY
+	    | "\\" ~ ("\"" | "\\" | "b" | "f" | "n" | "r" | "t" | "$")
+	    | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})}
+string_part_interp	= { "${" ~ node ~ "}" }
+
+// ## Forms
+
+form = {
+| form_list
+| form_record
+| form_fn
+| form_locals
+| form_let
+| form_inherit
+| form_selection
+| form_type
+| form_macro
+| form_arbitrary
+}
+
+form_arbitrary	= { start_paren ~ node* ~ close_paren }
+form_list	= { start_bracket ~ node* ~ close_bracket }
+form_record	= { start_brace
+	    ~ dotted_binding*
+	    ~ close_brace }
+form_fn	= { start_paren
+	  ~ kw_fn
+	  ~ typed_ident? // optional function name
+	  ~ (fn_unwrapped_record | fn_arg+)
+	  ~ close_paren }
+form_locals	= { start_paren
+	  ~ kw_locals
+	  ~ dotted_binding*
+	  ~ close_paren }
+form_let	= { start_paren
+	  ~ kw_let
+	  ~ start_bracket
+	  ~ dotted_binding*
+	  ~ close_bracket
+	  ~ node
+	  ~ close_paren }
+form_inherit	= { start_paren
+	  ~ kw_inherit
+	  ~ typed_ident
+	  ~ (start_bracket
+	    ~ typed_ident*
+	    ~ close_bracket)?
+	  ~ close_paren }
+form_selection	= { start_paren
+	  ~ sym_dot
+	  ~ node
+	  ~ node
+	  ~ close_paren }
+form_type	= { start_paren
+	  ~ kw_type
+	  ~ ident
+	  ~ close_paren }
+form_macro	= { start_paren
+	  ~ kw_ct_macro
+	  ~ node+
+	  ~ close_paren }
+
+
+type_construction	= { type_record
+	  | type_enum
+	  | type_forall
+	  | type_newtype }
+type_record	= { start_brace
+	  ~ typed_ident*
+	  ~ close_brace}
+type_enum	= { start_bracket
+	  ~ enum_variant*
+	  ~ close_bracket}
+type_forall	= { start_bracket
+	  ~ forall_variable+
+	  ~ type_construction
+	  ~ close_bracket}
+type_newtype	= { start_paren
+	  ~ node
+	  ~ close_paren}
+
+forall_variable	= { ident }
+
+enum_variant	= { start_paren
+	  ~ ident
+	  ~ type_construction
+	  ~ close_paren}
+
+
+fn_arg	= { typed_ident
+	  | fn_unwrapped_record
+	  | fn_unwrapped_list }
+fn_unwrapped_list	= { start_bracket
+	  ~ (typed_ident | unwrapped_w_def | sym_ellipsis)*
+	  ~ close_bracket }
+fn_unwrapped_record	= { start_brace
+	  ~ (typed_ident | unwrapped_w_def | sym_ellipsis)*
+	  ~ close_brace }
+// unwrapped with default component
+// in the shape of `(? (str name) "default-name")`
+unwrapped_w_def	= { start_paren
+	  ~ sym_question
+	  ~ typed_ident
+	  ~ node}
+
+// We just use "node" here to allow for arbitrary expressions, this gets further
+// validated at later steps.
+typed_ident	= { ident
+	  | (start_paren
+	     ~ node
+	     ~ ident
+	     ~ close_paren) }
+
+dotted_binding	= { (dotted_path ~ node)
+	  | form_inherit }
+dotted_path	= { dotted_path_part ~ ("." ~ dotted_path_part)* }
+dotted_path_part	= { ident | string | string_part_interp }
+
+start_paren	= {"("}
+close_paren	= {")"}
+start_bracket	= {"["}
+close_bracket	= {"]"}
+start_brace	= {"{"}
+close_brace	= {"}"}
+
+// ## Comments
+
+COMMENT	= { comment_block | comment_doc | comment_normal }
+
+comment_block	= {";_" ~ (node | EOI)} // TODO: THIS
+comment_doc	= {";." ~ (!NEWLINE ~ ANY)* ~ (NEWLINE | EOI)}
+comment_normal	= {";" ~ (!NEWLINE ~ ANY)* ~ (NEWLINE | EOI)}
